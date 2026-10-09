@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// ⚠️ STARTER — Phase 5, Contract 5.
-// Antarmuka (state, struct, event, error, signature, constructor) sudah disediakan agar
-// test di test/ bisa di-compile. Tugas Anda: isi setiap body yang berisi TODO sampai
-// `forge test` lulus. Warning compiler (unused parameter, restrict to pure/view) normal
-// selama fungsi masih kerangka. Referensi: solutions/src/ — buka setelah selesai.
-
 /**
  * @title NFTCollection
  * @notice ERC-721 NFT collection with phased minting, reveal, and EIP-2981 royalties.
@@ -14,9 +8,6 @@ pragma solidity ^0.8.24;
  *      Phase 5 — Contract 5
  */
 contract NFTCollection {
-    /// @dev Dipakai oleh kerangka starter. Hapus setelah semua fungsi diimplementasikan.
-    error NotImplemented();
-
     // =========================================================
     //                      METADATA
     // =========================================================
@@ -94,7 +85,7 @@ contract NFTCollection {
     // =========================================================
 
     modifier onlyOwner() {
-        // TODO: implementasikan pengecekan modifier ini
+        if (msg.sender != owner) revert NotOwner();
         _;
     }
 
@@ -126,13 +117,31 @@ contract NFTCollection {
     // =========================================================
 
     function mint(uint256 quantity) external payable {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (!publicSaleOpen) revert SaleNotOpen();
+        if (_nextTokenId + quantity > MAX_SUPPLY) revert MaxSupplyReached(MAX_SUPPLY);
+        if (mintedPerWallet[msg.sender] + quantity > MAX_PER_WALLET) {
+            revert MaxPerWalletReached(msg.sender, MAX_PER_WALLET);
+        }
+        if (msg.value < MINT_PRICE * quantity) {
+            revert InsufficientPayment(msg.value, MINT_PRICE * quantity);
+        }
+
+        mintedPerWallet[msg.sender] += quantity;
+
+        for (uint256 i = 0; i < quantity; i++) {
+            uint256 tokenId = _nextTokenId++;
+            _mint(msg.sender, tokenId);
+        }
     }
 
     function airdrop(address to, uint256 quantity) external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (to == address(0)) revert ZeroAddress();
+        if (_nextTokenId + quantity > MAX_SUPPLY) revert MaxSupplyReached(MAX_SUPPLY);
+
+        for (uint256 i = 0; i < quantity; i++) {
+            uint256 tokenId = _nextTokenId++;
+            _mint(to, tokenId);
+        }
     }
 
     // =========================================================
@@ -140,48 +149,53 @@ contract NFTCollection {
     // =========================================================
 
     function balanceOf(address _owner) external view returns (uint256) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (_owner == address(0)) revert ZeroAddress();
+        return _balances[_owner];
     }
 
     function ownerOf(uint256 tokenId) public view returns (address) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        address tokenOwner = _owners[tokenId];
+        if (tokenOwner == address(0)) revert TokenNotFound(tokenId);
+        return tokenOwner;
     }
 
     function approve(address to, uint256 tokenId) external {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        address tokenOwner = ownerOf(tokenId);
+        if (to == tokenOwner) revert SelfApproval();
+        if (msg.sender != tokenOwner && !_operatorApprovals[tokenOwner][msg.sender]) {
+            revert NotApproved(msg.sender, tokenId);
+        }
+        _tokenApprovals[tokenId] = to;
+        emit Approval(tokenOwner, to, tokenId);
     }
 
     function getApproved(uint256 tokenId) external view returns (address) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (_owners[tokenId] == address(0)) revert TokenNotFound(tokenId);
+        return _tokenApprovals[tokenId];
     }
 
     function setApprovalForAll(address operator, bool approved) external {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (operator == msg.sender) revert SelfApproval();
+        _operatorApprovals[msg.sender][operator] = approved;
+        emit ApprovalForAll(msg.sender, operator, approved);
     }
 
     function isApprovedForAll(address _owner, address operator) external view returns (bool) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        return _operatorApprovals[_owner][operator];
     }
 
     function transferFrom(address from, address to, uint256 tokenId) public {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        _checkApprovedOrOwner(msg.sender, tokenId);
+        _transfer(from, to, tokenId);
     }
 
     function safeTransferFrom(address from, address to, uint256 tokenId) external {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        safeTransferFrom(from, to, tokenId, "");
     }
 
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data) public {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        _checkApprovedOrOwner(msg.sender, tokenId);
+        _safeTransfer(from, to, tokenId, data);
     }
 
     // =========================================================
@@ -189,13 +203,13 @@ contract NFTCollection {
     // =========================================================
 
     function tokenURI(uint256 tokenId) external view returns (string memory) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (_owners[tokenId] == address(0)) revert TokenNotFound(tokenId);
+        if (!revealed) return unrevealedURI;
+        return string.concat(baseURI, _toString(tokenId), ".json");
     }
 
     function totalSupply() external view returns (uint256) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        return _nextTokenId;
     }
 
     // =========================================================
@@ -206,8 +220,8 @@ contract NFTCollection {
         external view
         returns (address receiver, uint256 royaltyAmount)
     {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        receiver      = owner;
+        royaltyAmount = (salePrice * royaltyBps) / 10_000;
     }
 
     // =========================================================
@@ -215,8 +229,11 @@ contract NFTCollection {
     // =========================================================
 
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        return
+            interfaceId == _INTERFACE_ID_ERC721     ||
+            interfaceId == _INTERFACE_ID_ERC721_META ||
+            interfaceId == _INTERFACE_ID_ERC2981    ||
+            interfaceId == _INTERFACE_ID_ERC165;
     }
 
     // =========================================================
@@ -224,23 +241,25 @@ contract NFTCollection {
     // =========================================================
 
     function toggleSale() external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        publicSaleOpen = !publicSaleOpen;
+        emit SaleToggled(publicSaleOpen);
     }
 
     function reveal(string calldata _baseURI) external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        revealed = true;
+        baseURI  = _baseURI;
+        emit Revealed(_baseURI);
     }
 
     function setRoyalty(uint96 newBps) external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        royaltyBps = newBps;
     }
 
     function withdrawFunds() external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        uint256 balance = address(this).balance;
+        emit Withdrawn(owner, balance);
+        (bool ok,) = owner.call{value: balance}("");
+        if (!ok) revert WithdrawFailed();
     }
 
     // =========================================================
@@ -248,23 +267,39 @@ contract NFTCollection {
     // =========================================================
 
     function _mint(address to, uint256 tokenId) internal {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        _balances[to]++;
+        _owners[tokenId] = to;
+        emit Transfer(address(0), to, tokenId);
+        emit Minted(to, tokenId);
     }
 
     function _transfer(address from, address to, uint256 tokenId) internal {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (ownerOf(tokenId) != from) revert NotApproved(from, tokenId);
+        if (to == address(0)) revert ZeroAddress();
+
+        delete _tokenApprovals[tokenId];
+
+        _balances[from]--;
+        _balances[to]++;
+        _owners[tokenId] = to;
+
+        emit Transfer(from, to, tokenId);
     }
 
     function _safeTransfer(address from, address to, uint256 tokenId, bytes memory data) internal {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        _transfer(from, to, tokenId);
+        _checkOnERC721Received(from, to, tokenId, data);
     }
 
     function _checkApprovedOrOwner(address spender, uint256 tokenId) internal view {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        address tokenOwner = ownerOf(tokenId);
+        if (
+            spender != tokenOwner &&
+            !_operatorApprovals[tokenOwner][spender] &&
+            _tokenApprovals[tokenId] != spender
+        ) {
+            revert NotApproved(spender, tokenId);
+        }
     }
 
     function _checkOnERC721Received(
@@ -273,13 +308,31 @@ contract NFTCollection {
         uint256 tokenId,
         bytes memory data
     ) private {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (to.code.length > 0) {
+            try IERC721Receiver(to).onERC721Received(msg.sender, from, tokenId, data) returns (
+                bytes4 retval
+            ) {
+                if (retval != IERC721Receiver.onERC721Received.selector) {
+                    revert UnsafeRecipient(to);
+                }
+            } catch {
+                revert UnsafeRecipient(to);
+            }
+        }
     }
 
     function _toString(uint256 value) internal pure returns (string memory) {
-        // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
-        revert NotImplemented();
+        if (value == 0) return "0";
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) { digits++; temp /= 10; }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits--;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 }
 

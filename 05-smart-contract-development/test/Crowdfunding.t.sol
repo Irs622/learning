@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/Crowdfunding.sol";
+import "src/Crowdfunding.sol";
 
 // =========================================================
 //           ATTACKER CONTRACT — Reentrancy PoC
@@ -95,14 +95,14 @@ contract CrowdfundingTest is Test {
         cf.donate{value: 3 ether}();
     }
 
-    function test_Revert_DonateAfterDeadline() public {
+    function test_RevertWhen_DonateAfterDeadline() public {
         vm.warp(block.timestamp + DURATION + 1);
         vm.prank(alice);
         vm.expectRevert(Crowdfunding.CampaignEnded.selector);
         cf.donate{value: 1 ether}();
     }
 
-    function test_Revert_DonateZero() public {
+    function test_RevertWhen_DonateZero() public {
         vm.prank(alice);
         vm.expectRevert(Crowdfunding.ZeroAmount.selector);
         cf.donate{value: 0}();
@@ -133,12 +133,12 @@ contract CrowdfundingTest is Test {
         assertFalse(cf.succeeded());
     }
 
-    function test_Revert_FinalizeBeforeDeadline() public {
+    function test_RevertWhen_FinalizeBeforeDeadline() public {
         vm.expectRevert(Crowdfunding.CampaignNotEnded.selector);
         cf.finalize();
     }
 
-    function test_Revert_FinalizeTwice() public {
+    function test_RevertWhen_FinalizeTwice() public {
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
 
@@ -165,7 +165,7 @@ contract CrowdfundingTest is Test {
         assertEq(address(cf).balance, 0);
     }
 
-    function test_Revert_NonCreatorWithdraw() public {
+    function test_RevertWhen_NonCreatorWithdraw() public {
         vm.prank(alice); cf.donate{value: 10 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
@@ -196,7 +196,7 @@ contract CrowdfundingTest is Test {
         assertEq(bob.balance, bobBefore + 3 ether);
     }
 
-    function test_Revert_RefundOnSuccess() public {
+    function test_RevertWhen_RefundOnSuccess() public {
         vm.prank(alice); cf.donate{value: 10 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
@@ -206,7 +206,7 @@ contract CrowdfundingTest is Test {
         cf.refund();
     }
 
-    function test_Revert_RefundNoDonation() public {
+    function test_RevertWhen_RefundNoDonation() public {
         vm.prank(alice); cf.donate{value: 1 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
@@ -217,7 +217,7 @@ contract CrowdfundingTest is Test {
         cf.refund();
     }
 
-    function test_Revert_CreatorRefund() public {
+    function test_RevertWhen_CreatorRefund() public {
         vm.prank(alice); cf.donate{value: 1 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
@@ -255,7 +255,7 @@ contract CrowdfundingTest is Test {
         // Only 1 ETH withdrawn, not more
         assertEq(address(cf).balance, contractBefore - 1 ether);
         // Reentrancy was blocked after first call
-        assertEq(attacker.attackCount, 1);
+        assertEq(attacker.attackCount(), 1);
     }
 
     // ===== PROGRESS =====

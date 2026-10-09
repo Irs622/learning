@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/SimpleStorage.sol";
+import "src/SimpleStorage.sol";
 
 contract SimpleStorageTest is Test {
     SimpleStorage public store;
@@ -70,7 +70,7 @@ contract SimpleStorageTest is Test {
 
     // ===== REVERTS =====
 
-    function test_Revert_NonOwnerStore() public {
+    function test_RevertWhen_NonOwnerStore() public {
         vm.prank(alice);
         vm.expectRevert(
             abi.encodeWithSelector(SimpleStorage.NotOwner.selector, alice, owner)
@@ -78,7 +78,7 @@ contract SimpleStorageTest is Test {
         store.store(999);
     }
 
-    function test_Revert_SameValue() public {
+    function test_RevertWhen_SameValue() public {
         vm.prank(owner);
         vm.expectRevert(
             abi.encodeWithSelector(SimpleStorage.SameValue.selector, INITIAL)
@@ -109,7 +109,7 @@ contract SimpleStorageTest is Test {
         assertEq(store.retrieve(), 999);
     }
 
-    function test_Revert_TransferToZeroAddress() public {
+    function test_RevertWhen_TransferToZeroAddress() public {
         vm.prank(owner);
         vm.expectRevert(SimpleStorage.ZeroAddress.selector);
         store.transferOwnership(address(0));

@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// ⚠️ STARTER — Phase 5, Contract 3.
-// Antarmuka (state, struct, event, error, signature, constructor) sudah disediakan agar
-// test di test/ bisa di-compile. Tugas Anda: isi setiap body yang berisi TODO sampai
-// `forge test` lulus. Warning compiler (unused parameter, restrict to pure/view) normal
-// selama fungsi masih kerangka. Referensi: solutions/src/ — buka setelah selesai.
-
 /**
  * @title Crowdfunding
  * @notice Trustless crowdfunding with goal, deadline, and refund mechanism.
@@ -14,9 +8,6 @@ pragma solidity ^0.8.24;
  *      Phase 5 — Contract 3
  */
 contract Crowdfunding {
-    /// @dev Dipakai oleh kerangka starter. Hapus setelah semua fungsi diimplementasikan.
-    error NotImplemented();
-
     // =========================================================
     //                      STATE VARIABLES
     // =========================================================
@@ -63,12 +54,14 @@ contract Crowdfunding {
     // =========================================================
 
     modifier noReentrant() {
-        // TODO: implementasikan pengecekan modifier ini
+        if (_locked) revert ReentrantCall();
+        _locked = true;
         _;
+        _locked = false;
     }
 
     modifier isFinalized() {
-        // TODO: implementasikan pengecekan modifier ini
+        if (!finalized) revert CampaignNotFinalized();
         _;
     }
 
@@ -95,26 +88,54 @@ contract Crowdfunding {
 
     /// @notice Donate ETH to the campaign.
     function donate() external payable {
-        // TODO: implementasikan (lihat README → Contract 3 → Spesifikasi)
-        revert NotImplemented();
+        if (block.timestamp >= DEADLINE) revert CampaignEnded();
+        if (msg.value == 0) revert ZeroAmount();
+
+        _donations[msg.sender] += msg.value;
+        totalRaised += msg.value;
+
+        emit Donated(msg.sender, msg.value, totalRaised);
     }
 
     /// @notice Finalize the campaign after deadline. Anyone can call.
     function finalize() external {
-        // TODO: implementasikan (lihat README → Contract 3 → Spesifikasi)
-        revert NotImplemented();
+        if (block.timestamp < DEADLINE) revert CampaignNotEnded();
+        if (finalized) revert AlreadyFinalized();
+
+        finalized = true;
+        succeeded = totalRaised >= GOAL;
+
+        emit Finalized(succeeded, totalRaised);
     }
 
     /// @notice Withdraw funds if campaign succeeded. Only creator.
     function withdraw() external noReentrant isFinalized {
-        // TODO: implementasikan (lihat README → Contract 3 → Spesifikasi)
-        revert NotImplemented();
+        if (msg.sender != CREATOR) revert NotCreator();
+        if (!succeeded) revert CampaignFailed();
+
+        uint256 amount = address(this).balance;
+
+        emit Withdrawn(CREATOR, amount);
+
+        (bool ok,) = CREATOR.call{value: amount}("");
+        require(ok, "Withdraw failed");
     }
 
     /// @notice Refund your donation if campaign failed.
     function refund() external noReentrant isFinalized {
-        // TODO: implementasikan (lihat README → Contract 3 → Spesifikasi)
-        revert NotImplemented();
+        if (succeeded) revert CampaignSucceeded();
+        if (msg.sender == CREATOR) revert CreatorCannotRefund();
+
+        uint256 amount = _donations[msg.sender];
+        if (amount == 0) revert NoDonation(msg.sender);
+
+        // CEI: Effects BEFORE Interaction
+        _donations[msg.sender] = 0;
+
+        emit Refunded(msg.sender, amount);
+
+        (bool ok,) = msg.sender.call{value: amount}("");
+        require(ok, "Refund failed");
     }
 
     // =========================================================
@@ -127,17 +148,17 @@ contract Crowdfunding {
         uint256 percentageWei,
         uint256 timeLeft
     ) {
-        // TODO: implementasikan (lihat README → Contract 3 → Spesifikasi)
-        revert NotImplemented();
+        raised        = totalRaised;
+        goal          = GOAL;
+        percentageWei = GOAL > 0 ? (totalRaised * 1e18) / GOAL : 0;
+        timeLeft      = block.timestamp >= DEADLINE ? 0 : DEADLINE - block.timestamp;
     }
 
     function getDonation(address donor) external view returns (uint256) {
-        // TODO: implementasikan (lihat README → Contract 3 → Spesifikasi)
-        revert NotImplemented();
+        return _donations[donor];
     }
 
     function isActive() external view returns (bool) {
-        // TODO: implementasikan (lihat README → Contract 3 → Spesifikasi)
-        revert NotImplemented();
+        return !finalized && block.timestamp < DEADLINE;
     }
 }

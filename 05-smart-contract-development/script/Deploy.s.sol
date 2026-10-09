@@ -2,12 +2,12 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Script.sol";
-import "../src/SimpleStorage.sol";
-import "../src/VotingSystem.sol";
-import "../src/Crowdfunding.sol";
-import "../src/ERC20Token.sol";
-import "../src/NFTCollection.sol";
-import "../src/TokenStaking.sol";
+import "src/SimpleStorage.sol";
+import "src/VotingSystem.sol";
+import "src/Crowdfunding.sol";
+import "src/ERC20Token.sol";
+import "src/NFTCollection.sol";
+import "src/TokenStaking.sol";
 
 /**
  * @title DeployAll

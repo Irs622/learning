@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/ERC20Token.sol";
+import "src/ERC20Token.sol";
 
 contract ERC20TokenTest is Test {
     ERC20Token public token;
@@ -64,7 +64,7 @@ contract ERC20TokenTest is Test {
         assertEq(token.balanceOf(owner), before);
     }
 
-    function test_Revert_Transfer_InsufficientBalance() public {
+    function test_RevertWhen_Transfer_InsufficientBalance() public {
         uint256 tooMuch = INITIAL_WEI + 1;
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(
@@ -74,7 +74,7 @@ contract ERC20TokenTest is Test {
         token.transfer(alice, tooMuch);
     }
 
-    function test_Revert_Transfer_ToZeroAddress() public {
+    function test_RevertWhen_Transfer_ToZeroAddress() public {
         vm.prank(owner);
         vm.expectRevert(ERC20Token.ZeroAddress.selector);
         token.transfer(address(0), 100);
@@ -144,7 +144,7 @@ contract ERC20TokenTest is Test {
         assertEq(token.allowance(owner, alice), type(uint256).max);
     }
 
-    function test_Revert_TransferFrom_ExceedsAllowance() public {
+    function test_RevertWhen_TransferFrom_ExceedsAllowance() public {
         uint256 approved = 100 * 1e18;
         uint256 over     = 101 * 1e18;
 
@@ -177,7 +177,7 @@ contract ERC20TokenTest is Test {
         assertEq(token.allowance(owner, alice), 60 * 1e18);
     }
 
-    function test_Revert_DecreaseAllowance_BelowZero() public {
+    function test_RevertWhen_DecreaseAllowance_BelowZero() public {
         vm.prank(owner);
         token.approve(alice, 100 * 1e18);
 
@@ -208,7 +208,7 @@ contract ERC20TokenTest is Test {
         token.mint(alice, mintAmt);
     }
 
-    function test_Revert_NonOwnerMint() public {
+    function test_RevertWhen_NonOwnerMint() public {
         vm.prank(alice);
         vm.expectRevert(ERC20Token.NotOwner.selector);
         token.mint(alice, 1000 * 1e18);
@@ -245,7 +245,7 @@ contract ERC20TokenTest is Test {
         assertEq(token.allowance(owner, alice), 0);
     }
 
-    function test_Revert_Burn_InsufficientBalance() public {
+    function test_RevertWhen_Burn_InsufficientBalance() public {
         vm.prank(alice); // alice has 0 balance
         vm.expectRevert(abi.encodeWithSelector(
             ERC20Token.InsufficientBalance.selector,

@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// ⚠️ STARTER — Phase 5, Contract 1.
-// Antarmuka (state, struct, event, error, signature, constructor) sudah disediakan agar
-// test di test/ bisa di-compile. Tugas Anda: isi setiap body yang berisi TODO sampai
-// `forge test` lulus. Warning compiler (unused parameter, restrict to pure/view) normal
-// selama fungsi masih kerangka. Referensi: solutions/src/ — buka setelah selesai.
-
 /**
  * @title SimpleStorage
  * @author Learning Web3
@@ -14,9 +8,6 @@ pragma solidity ^0.8.24;
  * @dev Phase 5 — Contract 1
  */
 contract SimpleStorage {
-    /// @dev Dipakai oleh kerangka starter. Hapus setelah semua fungsi diimplementasikan.
-    error NotImplemented();
-
     // =========================================================
     //                      STATE VARIABLES
     // =========================================================
@@ -52,7 +43,7 @@ contract SimpleStorage {
     // =========================================================
 
     modifier onlyOwner() {
-        // TODO: implementasikan pengecekan modifier ini
+        if (msg.sender != _owner) revert NotOwner(msg.sender, _owner);
         _;
     }
 
@@ -76,24 +67,35 @@ contract SimpleStorage {
      * @param newValue The new value. Cannot be same as current.
      */
     function store(uint256 newValue) external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 1 → Spesifikasi)
-        revert NotImplemented();
+        if (newValue == _value) revert SameValue(_value);
+
+        uint256 oldValue = _value;
+        _value = newValue;
+        _updateCount++;
+        _history.push(newValue);
+
+        emit Updated(msg.sender, oldValue, newValue, block.timestamp);
     }
 
     /**
      * @notice Transfer ownership to a new address.
      */
     function transferOwnership(address newOwner) external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 1 → Spesifikasi)
-        revert NotImplemented();
+        if (newOwner == address(0)) revert ZeroAddress();
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
     }
 
     /**
      * @notice Clear history and reset update counter.
      */
     function resetHistory() external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 1 → Spesifikasi)
-        revert NotImplemented();
+        uint256 recordsDeleted = _history.length;
+        delete _history;
+        _updateCount = 0;
+        _history.push(_value);
+        emit HistoryReset(msg.sender, recordsDeleted);
     }
 
     // =========================================================
@@ -101,22 +103,18 @@ contract SimpleStorage {
     // =========================================================
 
     function retrieve() external view returns (uint256) {
-        // TODO: implementasikan (lihat README → Contract 1 → Spesifikasi)
-        revert NotImplemented();
+        return _value;
     }
 
     function getHistory() external view returns (uint256[] memory) {
-        // TODO: implementasikan (lihat README → Contract 1 → Spesifikasi)
-        revert NotImplemented();
+        return _history;
     }
 
     function getUpdateCount() external view returns (uint256) {
-        // TODO: implementasikan (lihat README → Contract 1 → Spesifikasi)
-        revert NotImplemented();
+        return _updateCount;
     }
 
     function owner() external view returns (address) {
-        // TODO: implementasikan (lihat README → Contract 1 → Spesifikasi)
-        revert NotImplemented();
+        return _owner;
     }
 }

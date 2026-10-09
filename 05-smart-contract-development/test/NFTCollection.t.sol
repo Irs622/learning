@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import "../src/NFTCollection.sol";
+import "src/NFTCollection.sol";
 
 // =========================================================
 //      Helper: ERC-721 Receiver (Good and Bad versions)
@@ -109,13 +109,13 @@ contract NFTCollectionTest is Test {
         nft.mint{value: MINT_PRICE}(1);
     }
 
-    function test_Revert_Mint_SaleNotOpen() public {
+    function test_RevertWhen_Mint_SaleNotOpen() public {
         vm.prank(alice);
         vm.expectRevert(NFTCollection.SaleNotOpen.selector);
         nft.mint{value: MINT_PRICE}(1);
     }
 
-    function test_Revert_Mint_InsufficientPayment() public {
+    function test_RevertWhen_Mint_InsufficientPayment() public {
         vm.prank(owner);
         nft.toggleSale();
 
@@ -127,7 +127,7 @@ contract NFTCollectionTest is Test {
         nft.mint{value: 0.04 ether}(1);
     }
 
-    function test_Revert_Mint_MaxPerWallet() public {
+    function test_RevertWhen_Mint_MaxPerWallet() public {
         vm.prank(owner);
         nft.toggleSale();
 
@@ -151,7 +151,7 @@ contract NFTCollectionTest is Test {
         assertEq(nft.balanceOf(alice), 3);
     }
 
-    function test_Revert_Airdrop_NonOwner() public {
+    function test_RevertWhen_Airdrop_NonOwner() public {
         vm.prank(alice);
         vm.expectRevert(NFTCollection.NotOwner.selector);
         nft.airdrop(bob, 1);
@@ -214,7 +214,7 @@ contract NFTCollectionTest is Test {
         assertEq(nft.ownerOf(1), carol);
     }
 
-    function test_Revert_TransferFrom_NotApproved() public {
+    function test_RevertWhen_TransferFrom_NotApproved() public {
         vm.prank(owner);
         nft.airdrop(alice, 1);
 
@@ -235,7 +235,7 @@ contract NFTCollectionTest is Test {
         assertEq(nft.ownerOf(0), address(receiver));
     }
 
-    function test_Revert_SafeTransferFrom_ToBadReceiver() public {
+    function test_RevertWhen_SafeTransferFrom_ToBadReceiver() public {
         BadReceiver receiver = new BadReceiver();
         vm.prank(owner);
         nft.airdrop(alice, 1);
@@ -267,7 +267,7 @@ contract NFTCollectionTest is Test {
         assertEq(nft.tokenURI(2), "ipfs://QmCats/2.json");
     }
 
-    function test_Revert_TokenURI_NonExistent() public {
+    function test_RevertWhen_TokenURI_NonExistent() public {
         vm.expectRevert(abi.encodeWithSelector(NFTCollection.TokenNotFound.selector, 99));
         nft.tokenURI(99);
     }

@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// ⚠️ STARTER — Phase 5, Contract 2.
-// Antarmuka (state, struct, event, error, signature, constructor) sudah disediakan agar
-// test di test/ bisa di-compile. Tugas Anda: isi setiap body yang berisi TODO sampai
-// `forge test` lulus. Warning compiler (unused parameter, restrict to pure/view) normal
-// selama fungsi masih kerangka. Referensi: solutions/src/ — buka setelah selesai.
-
 /**
  * @title VotingSystem
  * @notice On-chain governance voting with proposals, time-based phases, and quorum.
  * @dev Phase 5 — Contract 2
  */
 contract VotingSystem {
-    /// @dev Dipakai oleh kerangka starter. Hapus setelah semua fungsi diimplementasikan.
-    error NotImplemented();
-
     // =========================================================
     //                      TYPE DEFINITIONS
     // =========================================================
@@ -76,12 +67,12 @@ contract VotingSystem {
     // =========================================================
 
     modifier onlyOwner() {
-        // TODO: implementasikan pengecekan modifier ini
+        if (msg.sender != _owner) revert NotOwner();
         _;
     }
 
     modifier proposalExists(uint256 proposalId) {
-        // TODO: implementasikan pengecekan modifier ini
+        if (!_proposals[proposalId].exists) revert ProposalNotFound(proposalId);
         _;
     }
 
@@ -102,28 +93,69 @@ contract VotingSystem {
         string calldata description,
         uint256 durationSeconds
     ) external onlyOwner returns (uint256 proposalId) {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        if (durationSeconds == 0) revert InvalidDuration();
+
+        proposalId = _nextProposalId++;
+
+        _proposals[proposalId] = Proposal({
+            id:          proposalId,
+            description: description,
+            creator:     msg.sender,
+            voteFor:     0,
+            voteAgainst: 0,
+            deadline:    block.timestamp + durationSeconds,
+            executed:    false,
+            exists:      true
+        });
+
+        emit ProposalCreated(proposalId, msg.sender, description, block.timestamp + durationSeconds);
     }
 
     function vote(uint256 proposalId, bool support) external proposalExists(proposalId) {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        Proposal storage proposal = _proposals[proposalId];
+
+        if (block.timestamp >= proposal.deadline) revert VotingEnded(proposalId, proposal.deadline);
+        if (_hasVoted[proposalId][msg.sender])    revert AlreadyVoted(msg.sender, proposalId);
+
+        _hasVoted[proposalId][msg.sender] = true;
+
+        if (support) {
+            proposal.voteFor++;
+        } else {
+            proposal.voteAgainst++;
+        }
+
+        emit Voted(proposalId, msg.sender, support);
     }
 
     function executeProposal(uint256 proposalId) external onlyOwner proposalExists(proposalId) {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        Proposal storage proposal = _proposals[proposalId];
+
+        if (proposal.executed) revert AlreadyExecuted(proposalId);
+        if (block.timestamp < proposal.deadline) revert VotingNotEnded(proposalId, proposal.deadline);
+
+        uint256 totalVotes = proposal.voteFor + proposal.voteAgainst;
+        if (totalVotes < quorumThreshold) revert QuorumNotMet(totalVotes, quorumThreshold);
+
+        proposal.executed = true;
+        bool passed = proposal.voteFor > proposal.voteAgainst;
+
+        emit ProposalExecuted(proposalId, passed);
     }
 
     function cancelProposal(uint256 proposalId) external onlyOwner proposalExists(proposalId) {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        Proposal storage proposal = _proposals[proposalId];
+        uint256 totalVotes = proposal.voteFor + proposal.voteAgainst;
+        if (totalVotes > 0) revert HasVotes(proposalId);
+
+        delete _proposals[proposalId];
+        emit ProposalCancelled(proposalId);
     }
 
     function setQuorum(uint256 newThreshold) external onlyOwner {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        uint256 old = quorumThreshold;
+        quorumThreshold = newThreshold;
+        emit QuorumUpdated(old, newThreshold);
     }
 
     // =========================================================
@@ -134,29 +166,23 @@ contract VotingSystem {
         external view proposalExists(proposalId)
         returns (Proposal memory)
     {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        return _proposals[proposalId];
     }
 
     function hasVoted(uint256 proposalId, address voter) external view returns (bool) {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        return _hasVoted[proposalId][voter];
     }
 
     function getResult(uint256 proposalId)
         external view proposalExists(proposalId)
         returns (bool passed, uint256 forVotes, uint256 againstVotes)
     {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
+        Proposal storage p = _proposals[proposalId];
+        forVotes     = p.voteFor;
+        againstVotes = p.voteAgainst;
+        passed       = forVotes > againstVotes;
     }
 
-    function owner() external view returns (address) {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
-    }
-    function nextProposalId() external view returns (uint256) {
-        // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
-        revert NotImplemented();
-    }
+    function owner() external view returns (address) { return _owner; }
+    function nextProposalId() external view returns (uint256) { return _nextProposalId; }
 }

@@ -34,4 +34,22 @@ anvil   = "http://localhost:8545"
 sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
-sepolia = "${ETHERSCAN_API_KEY}"
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
+
+# ── Profil jawaban (implementasi referensi) ─────────────────────────
+# Jalankan HANYA setelah Anda mengerjakan sendiri.
+#
+#   FOUNDRY_PROFILE=solutions forge test
+#     → test yang sama di test/ dijalankan terhadap solutions/src/ (bukan starter Anda)
+#
+#   FOUNDRY_PROFILE=answers forge test
+#     → jawaban latihan "Lengkapi sendiri" (solutions/test/) terhadap solutions/src/
+[profile.solutions]
+src        = "solutions/src"
+remappings = ["src/=solutions/src/", "forge-std/=lib/forge-std/src/"]
+
+[profile.answers]
+src        = "solutions/src"
+test       = "solutions/test"
+script     = "solutions/script"
+remappings = ["src/=solutions/src/", "forge-std/=lib/forge-std/src/"]

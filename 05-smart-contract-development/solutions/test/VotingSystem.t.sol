@@ -159,6 +159,30 @@ contract VotingSystemTest is Test {
         assertFalse(passed);
     }
 
+    function test_RevertWhen_ExecuteBeforeDeadline() public {
+        _createProposal("Test");
+        _voteThree(0);
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(
+            VotingSystem.VotingNotEnded.selector, 0, block.timestamp + DURATION
+        ));
+        voting.executeProposal(0);
+    }
+
+    function test_RevertWhen_ExecuteTwice() public {
+        _createProposal("Test");
+        _voteThree(0);
+        vm.warp(block.timestamp + DURATION + 1);
+
+        vm.prank(owner);
+        voting.executeProposal(0);
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(VotingSystem.AlreadyExecuted.selector, 0));
+        voting.executeProposal(0);
+    }
+
     function test_RevertWhen_QuorumNotMet() public {
         _createProposal("Low turnout");
         vm.prank(alice); voting.vote(0, true);
@@ -169,6 +193,29 @@ contract VotingSystemTest is Test {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSelector(VotingSystem.QuorumNotMet.selector, 2, QUORUM));
         voting.executeProposal(0);
+    }
+
+    // ===== CANCEL =====
+
+    function test_CancelProposal_NoVotes() public {
+        _createProposal("Cancel me");
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit VotingSystem.ProposalCancelled(0);
+        voting.cancelProposal(0);
+
+        vm.expectRevert(abi.encodeWithSelector(VotingSystem.ProposalNotFound.selector, 0));
+        voting.getProposal(0);
+    }
+
+    function test_RevertWhen_CancelWithVotes() public {
+        _createProposal("Has votes");
+        vm.prank(alice);
+        voting.vote(0, true);
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(VotingSystem.HasVotes.selector, 0));
+        voting.cancelProposal(0);
     }
 
     // ===== QUORUM UPDATE =====
@@ -182,14 +229,20 @@ contract VotingSystemTest is Test {
         assertEq(voting.quorumThreshold(), 5);
     }
 
-    // ===== TODO: LENGKAPI SENDIRI (lihat README → Contract 2 → Test Suite) =====
-    // Tulis test berikut. Implementasi referensi: solutions/test/VotingSystem.t.sol
-    // (buka HANYA setelah test Anda lulus).
-    //
-    // - test_CancelProposal_NoVotes()
-    // - test_RevertWhen_CancelWithVotes()
-    // - test_RevertWhen_ExecuteBeforeDeadline()
-    // - test_RevertWhen_ExecuteTwice()
-    // - test_MultipleProposals_IndependentState()
-    // - testFuzz_VoteCount(uint8 forVotes, uint8 againstVotes)
+    // ===== PROPOSALS ARE INDEPENDENT =====
+
+    function test_MultipleProposals_IndependentVotes() public {
+        _createProposal("Proposal 0");
+        _createProposal("Proposal 1");
+
+        vm.prank(alice); voting.vote(0, true);
+        vm.prank(alice); voting.vote(1, false);
+
+        VotingSystem.Proposal memory p0 = voting.getProposal(0);
+        VotingSystem.Proposal memory p1 = voting.getProposal(1);
+
+        assertEq(p0.voteFor, 1);
+        assertEq(p1.voteFor, 0);
+        assertEq(p1.voteAgainst, 1);
+    }
 }

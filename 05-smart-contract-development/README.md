@@ -2,7 +2,7 @@
 
 > **Level**: 3 — Hands-On Implementation
 > **Phase**: 5 of 13
-> **Estimated Time**: 14–21 hari
+> **Estimated Time**: 🚀 Intensif 14–21 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 5–8 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [04-solidity-fundamentals](../04-solidity-fundamentals/README.md) ✅ | [06-foundry-tooling](../06-foundry-tooling/README.md) ✅
 
 ---
@@ -26,12 +26,39 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 - [x] Foundry terinstall dan project structure dipahami (Phase 6).
 - [x] Memahami semua type system, data locations, dan patterns Solidity (Phase 4).
 - [x] Memahami EVM storage layout (Phase 2).
-- [x] Foundry setup di folder ini:
-  ```bash
-  cd 05-smart-contract-development/
-  forge init . --no-git
-  forge install OpenZeppelin/openzeppelin-contracts --no-git
-  ```
+
+---
+
+## ⚙️ Setup: Dependencies Foundry
+
+Folder ini **sudah berisi** `foundry.toml`, `src/`, `test/`, dan `script/`. Jangan jalankan `forge init .` di sini — perintah itu akan menimpa/bentrok dengan file yang sudah ada. Cukup install dependencies ke `lib/` (folder ini tidak ikut di-commit):
+
+```bash
+cd 05-smart-contract-development/
+
+# 1. Install forge-std (wajib — semua test & script import "forge-std/...")
+forge install foundry-rs/forge-std --no-git
+
+# 2. Install OpenZeppelin (opsional di fase ini — dipakai sebagai PEMBANDING,
+#    bukan dependency, karena ERC-20/721 di fase ini ditulis dari nol)
+forge install OpenZeppelin/openzeppelin-contracts --no-git
+
+# 3. Cek remappings yang terdeteksi otomatis
+forge remappings
+
+# 4. Pastikan semua contract bisa dikompilasi
+forge build
+# → Compiler run successful
+```
+
+Jika import tidak ter-resolve, buat `remappings.txt` (lihat Phase 6 — C2: *Import Paths & Remappings*):
+
+```text
+forge-std/=lib/forge-std/src/
+@openzeppelin/=lib/openzeppelin-contracts/
+```
+
+> 💡 Salin `.env.example` menjadi `.env` hanya ketika Anda masuk ke bab **🚀 Deployment**. Jangan pernah commit `.env`.
 
 ---
 
@@ -61,7 +88,37 @@ CONTRACT 4: ERC-20 Token (From Scratch)
 CONTRACT 5: NFT Collection (ERC-721)
     Konsep: Non-fungible tokens, metadata, minting phases, royalties
     Estimasi: 4–5 hari
+         │
+         ▼
+CHALLENGE: TokenStaking
+    Konsep: Integrasi antar-contract, reward berbasis waktu, minting permission
+    Estimasi: 2–3 hari
+         │
+         ▼
+DEPLOYMENT: Anvil → Sepolia → Etherscan Verify
+    Estimasi: 1 hari
 ```
+
+---
+
+## 📚 Concepts Overview
+
+| # | Contract | Konsep Inti | Security Pattern | File |
+|---|---|---|---|---|
+| 1 | SimpleStorage | State read/write, events, ownership, array history | Access control (`onlyOwner`), gas DoS pada `delete` array | `src/SimpleStorage.sol` |
+| 2 | VotingSystem | Struct, mapping, lifecycle proposal, time-based logic, quorum | One-address-one-vote, validasi deadline, custom errors | `src/VotingSystem.sol` |
+| 3 | Crowdfunding | `payable`, ETH flow, goal & deadline, refund | CEI, reentrancy guard, pull-over-push payment | `src/Crowdfunding.sol` |
+| 4 | ERC-20 Token | EIP-20, `allowance`, `transferFrom`, mint/burn | Approval race condition, validasi zero-address | `src/ERC20Token.sol` |
+| 5 | NFT Collection | EIP-721, EIP-165, EIP-2981, `tokenURI`, reveal | `safeTransferFrom` + receiver check, trait sniping | `src/NFTCollection.sol` |
+| 🏆 | TokenStaking | Integrasi contract, reward per detik, lock period | CEI, reentrancy guard, precision loss, minting authority | `src/TokenStaking.sol` (starter — Anda yang mengisi) |
+
+> **Cara belajar fase ini — Test-Driven:**
+> 1. Baca **Objective** & **Spesifikasi** contract.
+> 2. **🛠️ Kerjakan**: isi starter di `src/` sampai test di `test/` (yang sudah disediakan sebagai spesifikasi) lulus.
+> 3. Buka **Implementation (Pembahasan)** yang tersembunyi dan bandingkan.
+> 4. Pelajari **Test Suite** / PoC, lalu kerjakan **Soal Latihan**.
+>
+> Jawaban lengkap ada di `solutions/` (lihat [`solutions/README.md`](solutions/README.md)) — gunakan hanya sebagai pembanding.
 
 ---
 
@@ -106,7 +163,26 @@ Custom Errors:
 
 ---
 
-## Implementation
+## 🛠️ Kerjakan: `src/SimpleStorage.sol`
+
+1. Buka **`src/SimpleStorage.sol`** — starter berisi state, struct, event, error, signature, dan constructor. Semua body fungsi masih `revert NotImplemented()`.
+2. Jalankan test sebagai spesifikasi: `forge test --match-contract SimpleStorageTest -vv` → awalnya **merah semua**.
+3. Isi fungsi satu per satu sampai **11/11 test hijau**. Mulai dari modifier `onlyOwner`, lalu `store()`, lalu fungsi history.
+4. Baru setelah itu buka pembahasan di bawah dan bandingkan dengan implementasi Anda.
+
+**✅ Kriteria lulus:**
+- [ ] `forge test --match-contract SimpleStorageTest` → 11 passed, 0 failed
+- [ ] Tidak ada `revert NotImplemented()` dan `error NotImplemented()` tersisa di file Anda
+- [ ] Setiap fungsi state-changing mengikuti urutan Checks → Effects → Interactions
+- [ ] Anda bisa menjelaskan alasan setiap custom error & event tanpa melihat pembahasan
+
+---
+
+## Implementation (Pembahasan)
+
+<details>
+<summary>💡 Lihat implementasi referensi — buka <b>setelah</b> test Anda lulus</summary>
+
 
 ```solidity
 // src/SimpleStorage.sol
@@ -247,6 +323,8 @@ contract SimpleStorage {
     }
 }
 ```
+
+</details>
 
 ---
 
@@ -437,7 +515,7 @@ contract SimpleStorageTest is Test {
 <details>
 <summary>💡 Hint & Pembahasan</summary>
 
-`delete _history` berbiaya `5000 gas × N` (satu SSTORE per slot yang di-zero). Untuk 1000 entri ≈ 5.000.000 gas — hampir melebihi block gas limit!
+`delete _history` berbiaya sekitar `5.000 gas × N` (satu SSTORE cold nonzero → 0 per slot; sebagian dikembalikan sebagai refund, maksimal 1/5 gas transaksi). Untuk 1.000 entri ≈ 5 juta gas — mahal; untuk ~10.000 entri sudah mendekati/melampaui block gas limit, sehingga `resetHistory()` tidak bisa dipanggil lagi (DoS).
 
 Solusi: Gunakan "virtual reset" dengan pointer:
 ```solidity
@@ -525,7 +603,26 @@ Custom Errors:
 
 ---
 
-## Implementation
+## 🛠️ Kerjakan: `src/VotingSystem.sol`
+
+1. Buka **`src/VotingSystem.sol`** — starter berisi state, struct, event, error, signature, dan constructor. Semua body fungsi masih `revert NotImplemented()`.
+2. Jalankan test sebagai spesifikasi: `forge test --match-contract VotingSystemTest -vv` → awalnya **merah semua**.
+3. Isi fungsi satu per satu sampai **14/14 test hijau**. Mulai dari `createProposal()` & modifier `proposalExists`, lalu `vote()`, lalu `executeProposal()`. Setelah semua lulus, tulis test TODO di `test/VotingSystem.t.sol` (Test Suite di bawah).
+4. Baru setelah itu buka pembahasan di bawah dan bandingkan dengan implementasi Anda.
+
+**✅ Kriteria lulus:**
+- [ ] `forge test --match-contract VotingSystemTest` → 14 passed, 0 failed
+- [ ] Tidak ada `revert NotImplemented()` dan `error NotImplemented()` tersisa di file Anda
+- [ ] Setiap fungsi state-changing mengikuti urutan Checks → Effects → Interactions
+- [ ] Anda bisa menjelaskan alasan setiap custom error & event tanpa melihat pembahasan
+
+---
+
+## Implementation (Pembahasan)
+
+<details>
+<summary>💡 Lihat implementasi referensi — buka <b>setelah</b> test Anda lulus</summary>
+
 
 ```solidity
 // src/VotingSystem.sol
@@ -779,9 +876,13 @@ contract VotingSystem {
 }
 ```
 
+</details>
+
 ---
 
 ## Test Suite (Partial — Lengkapi sendiri!)
+
+> File `test/VotingSystem.t.sol` berisi test yang sama dengan blok di bawah, **tanpa** test pada daftar TODO. Tulis test TODO tersebut di file itu. Referensi jawaban: `solutions/test/VotingSystem.t.sol` (lihat [`solutions/README.md`](solutions/README.md)) — buka hanya setelah test Anda lulus.
 
 ```solidity
 // test/VotingSystem.t.sol
@@ -913,6 +1014,43 @@ contract VotingSystemTest is Test {
 
 ---
 
+## Soal Latihan Contract 2
+
+### Soal 2 — Governance Attack Surface
+
+```text
+VotingSystem dipakai sebuah komunitas untuk memutuskan penggunaan dana kas.
+Aturan: 1 address = 1 suara, quorumThreshold = 3, owner yang mengeksekusi proposal.
+```
+
+**Pertanyaan**:
+- a) Membuat address baru di Ethereum gratis. Jelaskan bagaimana satu orang bisa memenangkan proposal sendirian (Sybil attack). Mengapa ini tidak terjadi di sistem voting Web2 berbasis akun login?
+- b) Owner bisa memanggil `setQuorum()` kapan saja. Skenario apa yang membuat hal ini berbahaya bagi proposal yang **sedang berjalan**?
+- c) Seorang developer ingin menambahkan fungsi `getActiveProposals()` yang me-loop seluruh array proposal. Apa risikonya ketika jumlah proposal mencapai puluhan ribu, dan apakah risiko itu berbeda untuk fungsi `view` vs fungsi yang mengubah state?
+
+<details>
+<summary>💡 Pembahasan</summary>
+
+**a) Sybil Attack**:
+Di Web2, identitas dijaga oleh server (email, nomor HP, KYC). Di Ethereum, address hanyalah hasil derivasi private key (Phase 3) — siapa pun bisa membuat ribuan address dalam hitungan detik tanpa biaya. Karena VotingSystem menghitung `1 address = 1 suara`, satu orang cukup membuat 3 wallet, mengisi sedikit ETH untuk gas, lalu memenuhi quorum sendirian.
+
+Mitigasi umum:
+- **Token-weighted voting**: bobot suara = jumlah token yang dimiliki (membuat address baru tidak menambah kekuatan).
+- **Snapshot balance**: bobot diambil dari balance di block tertentu (mencegah pinjam token/flash loan lalu vote).
+- **Allowlist / proof-of-personhood**: hanya address terverifikasi yang boleh vote.
+
+**b) Mengubah Aturan di Tengah Permainan**:
+Jika owner menurunkan quorum setelah melihat proposal yang ia sukai kekurangan suara (atau menaikkan quorum untuk menggagalkan proposal yang tidak ia sukai), hasil voting bisa dimanipulasi tanpa satu pun suara berubah. Solusinya: simpan nilai quorum **di dalam struct proposal saat proposal dibuat**, sehingga perubahan `setQuorum()` hanya berlaku untuk proposal berikutnya. Pola yang sama berlaku untuk parameter governance lain → biasanya dibungkus *timelock* (Phase 13).
+
+**c) Unbounded Loop**:
+- Untuk fungsi yang **mengubah state**, loop atas array yang terus bertambah akan suatu saat melebihi block gas limit → fungsi tidak bisa dipanggil sama sekali (DoS permanen).
+- Untuk fungsi **`view`** yang dipanggil off-chain via `eth_call`, tidak ada biaya gas bagi user, tetapi RPC node tetap punya batas gas/timeout sehingga panggilan bisa gagal. Dan jika fungsi `view` itu dipanggil oleh contract lain di dalam transaksi, gas-nya tetap dibayar.
+- Solusi: pagination (`getProposals(offset, limit)`) atau biarkan indexer off-chain (Phase 10) membaca event `ProposalCreated`.
+
+</details>
+
+---
+
 ---
 
 # Contract 3: Crowdfunding
@@ -958,7 +1096,26 @@ Security Requirements:
 
 ---
 
-## Implementation
+## 🛠️ Kerjakan: `src/Crowdfunding.sol`
+
+1. Buka **`src/Crowdfunding.sol`** — starter berisi state, struct, event, error, signature, dan constructor. Semua body fungsi masih `revert NotImplemented()`.
+2. Jalankan test sebagai spesifikasi: `forge test --match-contract CrowdfundingTest -vv` → awalnya **merah semua**.
+3. Isi fungsi satu per satu sampai **19/19 test hijau**. Mulai dari `donate()`, lalu `finalize()`, lalu `refund()`/`withdraw()` dengan modifier `noReentrant`. Test `test_ReentrancyAttack_IsBlocked` baru lulus jika CEI Anda benar.
+4. Baru setelah itu buka pembahasan di bawah dan bandingkan dengan implementasi Anda.
+
+**✅ Kriteria lulus:**
+- [ ] `forge test --match-contract CrowdfundingTest` → 19 passed, 0 failed
+- [ ] Tidak ada `revert NotImplemented()` dan `error NotImplemented()` tersisa di file Anda
+- [ ] Setiap fungsi state-changing mengikuti urutan Checks → Effects → Interactions
+- [ ] Anda bisa menjelaskan alasan setiap custom error & event tanpa melihat pembahasan
+
+---
+
+## Implementation (Pembahasan)
+
+<details>
+<summary>💡 Lihat implementasi referensi — buka <b>setelah</b> test Anda lulus</summary>
+
 
 ```solidity
 // src/Crowdfunding.sol
@@ -1153,6 +1310,8 @@ contract Crowdfunding {
 }
 ```
 
+</details>
+
 ---
 
 ## Test: Reentrancy Attack PoC
@@ -1315,7 +1474,7 @@ contract CrowdfundingTest is Test {
         // Contract masih punya 5 ETH milik alice
         assertEq(address(cf).balance, contractBalanceBefore - 1 ether);
         // Reentrancy counter: seharusnya hanya 1 (tidak ada multiple reentry)
-        assertEq(attacker.attackCount, 1);
+        assertEq(attacker.attackCount(), 1);
     }
 
     // ===== REVERT TESTS =====
@@ -1357,6 +1516,43 @@ contract CrowdfundingTest is Test {
 
 ---
 
+## Soal Latihan Contract 3
+
+### Soal 3 — ETH Accounting & Refund Design
+
+```text
+Campaign: goal = 10 ETH, deadline = 30 hari.
+Saat deadline: totalRaised = 9 ETH, tetapi address(this).balance = 10.5 ETH.
+```
+
+**Pertanyaan**:
+- a) Bagaimana mungkin `address(this).balance` lebih besar dari `totalRaised`, padahal `Crowdfunding` tidak punya fungsi `receive()` atau `fallback()`? Sebutkan minimal dua cara.
+- b) Seorang developer mengusulkan `succeeded = address(this).balance >= GOAL` agar "lebih akurat". Mengapa ini justru membuka celah?
+- c) Bandingkan desain `refund()` (setiap donor menarik dananya sendiri) dengan desain `refundAll()` yang me-loop semua donor dan mengirim ETH satu per satu. Apa yang bisa dilakukan satu donor jahat terhadap desain kedua?
+- d) Apa yang terjadi jika tidak ada seorang pun yang memanggil `finalize()` setelah deadline? Apakah dana terkunci selamanya?
+
+<details>
+<summary>💡 Pembahasan</summary>
+
+**a) Forced ETH**:
+ETH bisa masuk ke contract **tanpa** melewati fungsi apa pun:
+1. `selfdestruct(payable(target))` dari contract lain — ETH dipaksa terkirim. (Sejak EIP-6780/Cancun, `selfdestruct` tidak lagi menghapus contract kecuali di transaksi yang sama dengan pembuatannya, tetapi **pengiriman ETH-nya tetap terjadi**.)
+2. Address contract dijadikan penerima *block reward / priority fee* (coinbase) oleh validator.
+3. ETH dikirim ke address tersebut **sebelum** contract di-deploy (address contract bisa diprediksi dari deployer + nonce, atau via `CREATE2`).
+
+**b) Jangan Gunakan `address(this).balance` untuk Logika Bisnis**:
+Karena balance bisa dimanipulasi dari luar, siapa pun bisa "mendorong" campaign menjadi sukses dengan mengirim paksa ETH, lalu creator menarik seluruh dana — termasuk donasi user yang seharusnya di-refund. Gunakan **internal accounting** (`totalRaised`) sebagai sumber kebenaran; balance hanya boleh dipakai untuk transfer sisa saldo.
+
+**c) Pull over Push**:
+Pada `refundAll()`, jika satu donor adalah contract yang `receive()`-nya selalu `revert`, seluruh loop gagal → **tidak ada satu donor pun yang bisa refund** (DoS). Loop juga bisa melebihi block gas limit jika donor banyak. Desain pull (`refund()` per donor) mengisolasi kegagalan: donor jahat hanya merugikan dirinya sendiri.
+
+**d) Liveness**:
+Dana tidak hilang, tetapi `refund()` dan `withdraw()` dilindungi modifier `isFinalized`, jadi keduanya menunggu `finalize()`. Karena `finalize()` bisa dipanggil **siapa saja** setelah deadline, donor yang ingin refund cukup memanggilnya sendiri. Ini contoh desain yang tidak bergantung pada satu pihak (owner) untuk menjaga dana tetap bisa diakses. Bandingkan jika `finalize()` diberi `onlyCreator` — creator yang kampanyenya gagal bisa menyandera dana donor.
+
+</details>
+
+---
+
 ---
 
 # Contract 4: ERC-20 Token (From Scratch)
@@ -1393,7 +1589,26 @@ TIDAK WAJIB (tapi best practice):
 
 ---
 
-## Implementation
+## 🛠️ Kerjakan: `src/ERC20Token.sol`
+
+1. Buka **`src/ERC20Token.sol`** — starter berisi state, struct, event, error, signature, dan constructor. Semua body fungsi masih `revert NotImplemented()`.
+2. Jalankan test sebagai spesifikasi: `forge test --match-contract ERC20TokenTest -vv` → awalnya **merah semua**.
+3. Isi fungsi satu per satu sampai **26/26 test hijau**. **Implementasikan `_mint` lebih dulu** — constructor memanggilnya, sehingga `setUp()` gagal dan seluruh suite merah sampai `_mint` selesai. Lalu `transfer`, `approve`, `transferFrom`, `burn`.
+4. Baru setelah itu buka pembahasan di bawah dan bandingkan dengan implementasi Anda.
+
+**✅ Kriteria lulus:**
+- [ ] `forge test --match-contract ERC20TokenTest` → 26 passed, 0 failed
+- [ ] Tidak ada `revert NotImplemented()` dan `error NotImplemented()` tersisa di file Anda
+- [ ] Setiap fungsi state-changing mengikuti urutan Checks → Effects → Interactions
+- [ ] Anda bisa menjelaskan alasan setiap custom error & event tanpa melihat pembahasan
+
+---
+
+## Implementation (Pembahasan)
+
+<details>
+<summary>💡 Lihat implementasi referensi — buka <b>setelah</b> test Anda lulus</summary>
+
 
 ```solidity
 // src/ERC20Token.sol
@@ -1660,11 +1875,13 @@ contract ERC20Token {
 }
 ```
 
+</details>
+
 ---
 
 ## Soal Latihan Contract 4
 
-### Soal 2 — Approval Race Condition
+### Soal 4 — Approval Race Condition
 
 ```text
 Skenario: Alice memberikan Bob allowance 100 token untuk spend.
@@ -1751,7 +1968,26 @@ EIP-2981 Royalty Standard:
 
 ---
 
-## Implementation
+## 🛠️ Kerjakan: `src/NFTCollection.sol`
+
+1. Buka **`src/NFTCollection.sol`** — starter berisi state, struct, event, error, signature, dan constructor. Semua body fungsi masih `revert NotImplemented()`.
+2. Jalankan test sebagai spesifikasi: `forge test --match-contract NFTCollectionTest -vv` → awalnya **merah semua**.
+3. Isi fungsi satu per satu sampai **27/27 test hijau**. Mulai dari `balanceOf`/`ownerOf` & mint internal, lalu `mint()`, approval, `transferFrom`, `safeTransferFrom` (receiver check), `tokenURI`/reveal, `supportsInterface`, `royaltyInfo`.
+4. Baru setelah itu buka pembahasan di bawah dan bandingkan dengan implementasi Anda.
+
+**✅ Kriteria lulus:**
+- [ ] `forge test --match-contract NFTCollectionTest` → 27 passed, 0 failed
+- [ ] Tidak ada `revert NotImplemented()` dan `error NotImplemented()` tersisa di file Anda
+- [ ] Setiap fungsi state-changing mengikuti urutan Checks → Effects → Interactions
+- [ ] Anda bisa menjelaskan alasan setiap custom error & event tanpa melihat pembahasan
+
+---
+
+## Implementation (Pembahasan)
+
+<details>
+<summary>💡 Lihat implementasi referensi — buka <b>setelah</b> test Anda lulus</summary>
+
 
 ```solidity
 // src/NFTCollection.sol
@@ -2145,11 +2381,13 @@ interface IERC721Receiver {
 }
 ```
 
+</details>
+
 ---
 
 ## Soal Latihan Contract 5
 
-### Soal 3 — Metadata & Reveal Mechanism
+### Soal 5 — Metadata & Reveal Mechanism
 
 ```text
 NFT project "PixelCats" menggunakan reveal mechanism:
@@ -2170,7 +2408,7 @@ tokenURI(99) setelah reveal → "ipfs://QmCats/99.json"
 <summary>💡 Pembahasan</summary>
 
 **a) On-chain metadata vs IPFS**:
-- **On-chain**: Metadata permanen (tidak bisa berubah/hilang), tapi sangat mahal (1 karakter = 1 byte storage = ~200 gas). Untuk gambar SVG sederhana mungkin OK. Untuk gambar kompleks: jutaan gas.
+- **On-chain**: Metadata permanen (tidak bisa berubah/hilang), tapi sangat mahal: di storage ±690 gas per byte (22.100 gas per slot 32 byte); sebagai bytecode contract (pola *SSTORE2*) ±200 gas per byte. Untuk SVG sederhana mungkin OK. Untuk gambar kompleks: jutaan gas.
 - **IPFS**: Murah (hanya simpan CID hash), tapi bergantung pada IPFS gateway yang masih aktif. Jika tidak ada yang pin file tersebut, data bisa hilang. Solusi: gunakan `ipfs://` bukan `https://ipfs.io/ipfs/` agar client memilih gateway sendiri.
 
 **b) Trait Sniping Attack**:
@@ -2223,13 +2461,152 @@ SECURITY:
 
 ---
 
+## Tugas Challenge
+
+> *`src/TokenStaking.sol` berisi **starter** (signature fungsi + parameter dari spesifikasi, semua fungsi masih `revert NotImplemented()`). Implementasi referensi ada di `solutions/src/TokenStaking.sol` — buka hanya setelah Anda selesai.*
+
+1. **Implementasi**: lengkapi `src/TokenStaking.sol` sesuai spesifikasi di atas (struct, custom errors, events, NatSpec seperti contract 1–5).
+2. **Test suite** `test/TokenStaking.t.sol` (buat sendiri — file ini sengaja belum ada) yang mencakup minimal skenario berikut:
+
+| Kategori | Skenario yang wajib di-test |
+|---|---|
+| Stake | stake berhasil & token pindah ke contract; revert jika di bawah `MIN_STAKE`; revert jika sudah punya posisi stake; revert jika `approve` belum dilakukan |
+| Reward | `getReward()` bernilai 0 tepat setelah stake; reward setelah 1 hari = 1% dari amount; reward setelah ½ hari (reward per detik, bukan per hari penuh) |
+| Claim | revert jika claim < 1 hari sejak claim terakhir; claim berhasil setelah 1 hari & timer `lastClaim` ter-reset |
+| Unstake | revert sebelum `LOCK_PERIOD`; unstake setelah 7 hari mengembalikan pokok + reward; `totalStaked` berkurang dengan benar |
+| Integrasi | reward gagal di-mint jika `TokenStaking` tidak punya izin `mint` di `ERC20Token` |
+| Fuzz | `testFuzz_RewardNeverExceedsFormula(uint256 amount, uint256 elapsed)` dengan `bound()` |
+
+3. **Review keamanan** — tulis jawaban Anda di bagian **🗒️ Notes**:
+   - Siapa yang berhak memanggil `mint()` di `ERC20Token`? Bagaimana `TokenStaking` mendapatkan hak itu, dan apa risikonya jika caranya adalah *transfer ownership*?
+   - `unstake()` mengembalikan pokok **dan** me-mint reward dalam satu transaksi. Jika `mint` gagal, apa yang terjadi pada **pokok** milik user? Bagaimana desain yang memisahkan keduanya agar pokok selalu bisa ditarik? (Kaitkan dengan prinsip *isolasi kegagalan* di Phase 8 C7.)
+   - Apakah nilai return `bool` dari `transfer`/`transferFrom` sudah diperiksa? Token apa di dunia nyata yang tidak me-revert saat gagal?
+   - Reward di-*mint* tanpa batas. Apa dampaknya terhadap supply & harga token jika banyak user stake dalam jangka panjang? (Pemanasan untuk Phase 11 — Tokenomics.)
+
+<details>
+<summary>💡 Hint 1 — Rumus Reward</summary>
+
+Rate 1% per hari = `100` basis points dari `10_000`. Agar reward bertambah **per detik**:
+
+```text
+reward = amount × REWARD_RATE × elapsedSeconds / (BASIS_POINTS × 1 days)
+```
+
+Perhatikan **urutan operasi**: Solidity tidak punya desimal, pembagian membulatkan ke bawah. Selalu **kalikan dulu, bagi terakhir**. Coba hitung manual apa yang terjadi jika Anda menulis `amount × (REWARD_RATE / BASIS_POINTS)`.
+
+</details>
+
+<details>
+<summary>💡 Hint 2 — Mengetes Waktu</summary>
+
+Gunakan cheatcode `vm.warp(block.timestamp + 1 days)` untuk memajukan waktu, dan `vm.prank(user)` + `token.approve(address(staking), amount)` sebelum `stake()`. Lihat Phase 6 — C4: *ETH Balance & Time Manipulation*.
+
+</details>
+
+<details>
+<summary>💡 Hint 3 — Minting Authority</summary>
+
+Baca kembali modifier pada fungsi `mint()` di `src/ERC20Token.sol`, lalu baca `script/Deploy.s.sol` bagian Challenge. Apakah setelah deploy, `TokenStaking` benar-benar bisa mint reward? Pikirkan pola yang lebih aman daripada memindahkan ownership penuh (petunjuk: *role-based access control*).
+
+</details>
+
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Implementasi `src/TokenStaking.sol` + test kategori **Stake, Reward, Claim, Unstake** |
+| 🟡 **Extended** — disarankan | Test kategori **Integrasi** & **Fuzz** + jawab 4 pertanyaan *Review keamanan* |
+| 🔴 **Stretch** — untuk portfolio | Perbaiki desain (role minter terpisah, pokok tetap bisa ditarik walau mint gagal) dan buktikan dengan test |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] `forge test --match-contract TokenStaking` hijau dengan minimal 1 test per baris tabel kategori Core
+- [ ] Reward setelah tepat 1 hari = 1% dari pokok (assert nilai eksak, bukan `> 0`)
+- [ ] Unstake sebelum `LOCK_PERIOD` dan claim < 1 hari → revert dengan custom error Anda
+- [ ] Tidak ada `NotImplemented` tersisa di `src/TokenStaking.sol`
+
+---
+
+---
+
+# 🚀 Deployment: Anvil → Sepolia
+
+> *Prasyarat: Phase 6 — C6 (anvil) dan C7 (Deployment Scripts). Semua contract & test harus sudah lulus `forge test`.*
+
+Script deployment sudah tersedia di `script/Deploy.s.sol` (contract `DeployAll`). Tugas Anda adalah **menjalankannya sendiri** dan memahami setiap langkah.
+
+> ⚠️ Script men-deploy kode di `src/` — yaitu **implementasi Anda**. Selama masih ada `NotImplemented()`, deployment akan gagal (`ERC20Token` memanggil `_mint` di constructor). Selesaikan contract 1–5 dulu. Untuk sekadar mencoba alur deployment dengan implementasi referensi: `FOUNDRY_PROFILE=solutions forge script ...`.
+
+## Langkah 1 — Konfigurasi `.env`
+
+```bash
+cp .env.example .env
+# Isi SEPOLIA_RPC_URL dan ETHERSCAN_API_KEY.
+# PRIVATE_KEY di .env.example adalah key default anvil account #0 — PUBLIK, hanya untuk lokal!
+# Untuk Sepolia gunakan wallet KHUSUS testnet, jangan wallet utama Anda.
+
+source .env
+```
+
+## Langkah 2 — Dry Run & Deploy ke Anvil
+
+```bash
+# Terminal 1
+anvil
+
+# Terminal 2 — simulasi tanpa broadcast
+forge script script/Deploy.s.sol:DeployAll --rpc-url anvil
+
+# Deploy sungguhan ke anvil
+forge script script/Deploy.s.sol:DeployAll --rpc-url anvil --broadcast
+```
+
+## Langkah 3 — Deploy ke Sepolia + Verify
+
+```bash
+forge script script/Deploy.s.sol:DeployAll \
+  --rpc-url sepolia \
+  --broadcast \
+  --verify \
+  -vvvv
+```
+
+> Butuh Sepolia ETH dari faucet. Hasil broadcast tersimpan di `broadcast/` (sudah di-`.gitignore`).
+
+## Langkah 4 — Catat Hasil Deployment
+
+Buat `deployments/sepolia.md` (atau `.json`) berisi: nama contract, address, tx hash, block number, dan link Etherscan. Folder ini **yang** di-commit — bukan `broadcast/`.
+
+## Latihan Deployment
+
+1. Gunakan `cast call` untuk membaca `retrieve()` dari SimpleStorage dan `totalSupply()` dari ERC20Token yang sudah Anda deploy. Apakah nilainya sesuai parameter constructor di `Deploy.s.sol`?
+2. *(Setelah Challenge TokenStaking selesai dan di-deploy ulang)* Gunakan `cast send` untuk memanggil `stake()` di TokenStaking (jangan lupa `approve` dulu). Lalu tunggu, dan panggil `claimReward()`. Apakah berhasil? Jika gagal, baca revert reason-nya dengan `cast run <txhash>` dan hubungkan dengan **Hint 3** di Challenge.
+3. Berapa total gas yang dihabiskan untuk deploy semua contract? Contract mana yang paling mahal dan mengapa? (Petunjuk: `forge build --sizes`.)
+
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Langkah 1–2: deploy ke anvil + Latihan Deployment no. 1 |
+| 🟡 **Extended** — disarankan | Langkah 3–4: deploy & verify di Sepolia + catatan `deployments/` |
+| 🔴 **Stretch** — untuk portfolio | Latihan Deployment no. 2–3 + deploy ke satu L2 testnet (preview Phase 12) |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] `forge script ... --rpc-url anvil --broadcast` sukses untuk implementasi **Anda**
+- [ ] `cast call` membaca `retrieve()` dan `totalSupply()` dengan nilai sesuai parameter constructor
+- [ ] `.env` tidak ter-commit (`git status` bersih dari `.env`)
+
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
 cd 05-smart-contract-development/
 
-# Setup project
-forge init . --no-git
+# Setup dependencies (lihat ⚙️ Setup — jangan forge init di folder ini)
+forge install foundry-rs/forge-std --no-git
 forge install OpenZeppelin/openzeppelin-contracts --no-git
 
 # Setelah implement semua contract dan test:
@@ -2269,14 +2646,16 @@ git commit -m "deploy: deploy all contracts to Sepolia testnet"
 
 ## 📊 Progress Tracker
 
-- [ ] **Setup**: Foundry init, OpenZeppelin install, remappings configured
+- [ ] **Setup**: forge-std + OpenZeppelin terinstall, remappings configured, `forge build` sukses
 - [ ] **Contract 1**: SimpleStorage — *Ownership, history, events, fuzz test*
 - [ ] **Contract 2**: VotingSystem — *Struct, mapping, time-based logic, quorum*
 - [ ] **Contract 3**: Crowdfunding — *ETH flow, CEI, reentrancy guard, PoC test*
 - [ ] **Contract 4**: ERC-20 Token — *EIP-20 standard, allowance, race condition*
 - [ ] **Contract 5**: NFT Collection (ERC-721) — *EIP-721/2981/165, reveal, royalties*
-- [ ] **Challenge**: TokenStaking DeFi integration
+- [ ] **Exercise**: Soal 1–5
+- [ ] **Challenge**: TokenStaking DeFi integration + `test/TokenStaking.t.sol` + review keamanan
 - [ ] **Deployment**: Semua contract di-deploy ke Sepolia dan verified di Etherscan
+- [ ] **Latihan Deployment**: 3 soal `cast` di bab Deployment
 - [ ] **Knowledge Check**: 12 Questions
 - [ ] **Review**: Self-assessment
 
@@ -2297,7 +2676,7 @@ git commit -m "deploy: deploy all contracts to Sepolia testnet"
 - [Solmate (Ultra gas-efficient implementations)](https://github.com/transmissions11/solmate)
 
 ### Security
-- [SWC-107: Reentrancy](https://swcregistry.io/docs/SWC-107)
+- [SWC-107: Reentrancy](https://swcregistry.io/docs/SWC-107) *(SWC Registry tidak lagi diperbarui sejak 2020 — tetap berguna sebagai klasifikasi dasar)*
 - [SWC-114: Transaction Order Dependence (Race Condition)](https://swcregistry.io/docs/SWC-114)
 - [Consensys Best Practices: Known Attacks](https://consensys.github.io/smart-contract-best-practices/attacks/)
 
