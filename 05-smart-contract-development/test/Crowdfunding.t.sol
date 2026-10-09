@@ -41,11 +41,11 @@ contract CrowdfundingTest is Test {
     Crowdfunding public cf;
 
     address payable public creator = payable(makeAddr("creator"));
-    address public alice  = makeAddr("alice");
-    address public bob    = makeAddr("bob");
-    address public carol  = makeAddr("carol");
+    address public alice = makeAddr("alice");
+    address public bob = makeAddr("bob");
+    address public carol = makeAddr("carol");
 
-    uint256 constant GOAL     = 10 ether;
+    uint256 constant GOAL = 10 ether;
     uint256 constant DURATION = 30 days;
 
     function setUp() public {
@@ -53,16 +53,16 @@ contract CrowdfundingTest is Test {
         cf = new Crowdfunding(GOAL, DURATION);
 
         vm.deal(alice, 100 ether);
-        vm.deal(bob,   100 ether);
+        vm.deal(bob, 100 ether);
         vm.deal(carol, 100 ether);
     }
 
     // ===== DEPLOYMENT =====
 
     function test_InitialState() public view {
-        assertEq(cf.CREATOR(),      creator);
-        assertEq(cf.GOAL(),         GOAL);
-        assertEq(cf.totalRaised(),  0);
+        assertEq(cf.CREATOR(), creator);
+        assertEq(cf.GOAL(), GOAL);
+        assertEq(cf.totalRaised(), 0);
         assertFalse(cf.finalized());
         assertFalse(cf.succeeded());
         assertTrue(cf.isActive());
@@ -149,8 +149,10 @@ contract CrowdfundingTest is Test {
     // ===== SUCCESS SCENARIO =====
 
     function test_Success_CreatorWithdraws() public {
-        vm.prank(alice); cf.donate{value: 6 ether}();
-        vm.prank(bob);   cf.donate{value: 4 ether}();
+        vm.prank(alice);
+        cf.donate{value: 6 ether}();
+        vm.prank(bob);
+        cf.donate{value: 4 ether}();
 
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
@@ -166,7 +168,8 @@ contract CrowdfundingTest is Test {
     }
 
     function test_RevertWhen_NonCreatorWithdraw() public {
-        vm.prank(alice); cf.donate{value: 10 ether}();
+        vm.prank(alice);
+        cf.donate{value: 10 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
 
@@ -178,8 +181,10 @@ contract CrowdfundingTest is Test {
     // ===== FAILURE SCENARIO =====
 
     function test_Failed_DonorsRefund() public {
-        vm.prank(alice); cf.donate{value: 2 ether}();
-        vm.prank(bob);   cf.donate{value: 3 ether}();
+        vm.prank(alice);
+        cf.donate{value: 2 ether}();
+        vm.prank(bob);
+        cf.donate{value: 3 ether}();
 
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
@@ -197,7 +202,8 @@ contract CrowdfundingTest is Test {
     }
 
     function test_RevertWhen_RefundOnSuccess() public {
-        vm.prank(alice); cf.donate{value: 10 ether}();
+        vm.prank(alice);
+        cf.donate{value: 10 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
 
@@ -207,7 +213,8 @@ contract CrowdfundingTest is Test {
     }
 
     function test_RevertWhen_RefundNoDonation() public {
-        vm.prank(alice); cf.donate{value: 1 ether}();
+        vm.prank(alice);
+        cf.donate{value: 1 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
 
@@ -218,7 +225,8 @@ contract CrowdfundingTest is Test {
     }
 
     function test_RevertWhen_CreatorRefund() public {
-        vm.prank(alice); cf.donate{value: 1 ether}();
+        vm.prank(alice);
+        cf.donate{value: 1 ether}();
         vm.warp(block.timestamp + DURATION + 1);
         cf.finalize();
 

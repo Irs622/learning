@@ -17,10 +17,10 @@ contract Crowdfunding {
     uint256 public immutable DEADLINE;
 
     uint256 public totalRaised;
-    bool    public finalized;
-    bool    public succeeded;
+    bool public finalized;
+    bool public succeeded;
 
-    bool    private _locked;
+    bool private _locked;
 
     mapping(address => uint256) private _donations;
 
@@ -77,8 +77,8 @@ contract Crowdfunding {
         if (goal == 0) revert ZeroAmount();
         if (durationSeconds == 0) revert ZeroAmount();
 
-        CREATOR  = payable(msg.sender);
-        GOAL     = goal;
+        CREATOR = payable(msg.sender);
+        GOAL = goal;
         DEADLINE = block.timestamp + durationSeconds;
     }
 
@@ -142,16 +142,15 @@ contract Crowdfunding {
     //                      VIEW FUNCTIONS
     // =========================================================
 
-    function getProgress() external view returns (
-        uint256 raised,
-        uint256 goal,
-        uint256 percentageWei,
-        uint256 timeLeft
-    ) {
-        raised        = totalRaised;
-        goal          = GOAL;
+    function getProgress()
+        external
+        view
+        returns (uint256 raised, uint256 goal, uint256 percentageWei, uint256 timeLeft)
+    {
+        raised = totalRaised;
+        goal = GOAL;
         percentageWei = GOAL > 0 ? (totalRaised * 1e18) / GOAL : 0;
-        timeLeft      = block.timestamp >= DEADLINE ? 0 : DEADLINE - block.timestamp;
+        timeLeft = block.timestamp >= DEADLINE ? 0 : DEADLINE - block.timestamp;
     }
 
     function getDonation(address donor) external view returns (uint256) {

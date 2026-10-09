@@ -31,10 +31,10 @@ interface IERC20 {
 
 contract TokenStaking {
     // ── Parameter dari spesifikasi (boleh dipakai apa adanya) ──────────
-    uint256 public constant MIN_STAKE      = 100 * 1e18;  // 100 token
-    uint256 public constant LOCK_PERIOD    = 7 days;
-    uint256 public constant REWARD_RATE    = 100;         // 1% = 100 basis points per hari
-    uint256 public constant BASIS_POINTS   = 10_000;
+    uint256 public constant MIN_STAKE = 100 * 1e18; // 100 token
+    uint256 public constant LOCK_PERIOD = 7 days;
+    uint256 public constant REWARD_RATE = 100; // 1% = 100 basis points per hari
+    uint256 public constant BASIS_POINTS = 10_000;
 
     IERC20 public immutable STAKE_TOKEN;
 

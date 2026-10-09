@@ -30,12 +30,7 @@ contract SimpleStorage {
     //                         EVENTS
     // =========================================================
 
-    event Updated(
-        address indexed by,
-        uint256 oldValue,
-        uint256 newValue,
-        uint256 indexed timestamp
-    );
+    event Updated(address indexed by, uint256 oldValue, uint256 newValue, uint256 indexed timestamp);
     event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
     event HistoryReset(address indexed by, uint256 totalRecordsDeleted);
 

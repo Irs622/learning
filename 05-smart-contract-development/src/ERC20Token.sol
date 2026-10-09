@@ -21,9 +21,9 @@ contract ERC20Token {
     //                      METADATA
     // =========================================================
 
-    string  public name;
-    string  public symbol;
-    uint8   public constant decimals = 18;
+    string public name;
+    string public symbol;
+    uint8 public constant decimals = 18;
 
     // =========================================================
     //                      STATE VARIABLES
@@ -32,17 +32,17 @@ contract ERC20Token {
     uint256 public totalSupply;
     address public owner;
 
-    mapping(address => uint256)                     public balanceOf;
+    mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
 
     // =========================================================
     //                         EVENTS
     // =========================================================
 
-    event Transfer(address indexed from,  address indexed to,      uint256 value);
-    event Approval(address indexed owner, address indexed spender,  uint256 value);
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    event Minted(address indexed to,   uint256 amount);
+    event Minted(address indexed to, uint256 amount);
     event Burned(address indexed from, uint256 amount);
 
     // =========================================================
@@ -74,7 +74,7 @@ contract ERC20Token {
      * @param initialSupply Initial supply in whole tokens (multiplied by 10^18 internally).
      */
     constructor(string memory _name, string memory _symbol, uint256 initialSupply) {
-        name  = _name;
+        name = _name;
         symbol = _symbol;
         owner = msg.sender;
 

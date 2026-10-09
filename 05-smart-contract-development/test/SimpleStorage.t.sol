@@ -72,17 +72,13 @@ contract SimpleStorageTest is Test {
 
     function test_RevertWhen_NonOwnerStore() public {
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(SimpleStorage.NotOwner.selector, alice, owner)
-        );
+        vm.expectRevert(abi.encodeWithSelector(SimpleStorage.NotOwner.selector, alice, owner));
         store.store(999);
     }
 
     function test_RevertWhen_SameValue() public {
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(SimpleStorage.SameValue.selector, INITIAL)
-        );
+        vm.expectRevert(abi.encodeWithSelector(SimpleStorage.SameValue.selector, INITIAL));
         store.store(INITIAL);
     }
 
@@ -98,9 +94,7 @@ contract SimpleStorageTest is Test {
 
         // old owner cannot store
         vm.prank(owner);
-        vm.expectRevert(
-            abi.encodeWithSelector(SimpleStorage.NotOwner.selector, owner, alice)
-        );
+        vm.expectRevert(abi.encodeWithSelector(SimpleStorage.NotOwner.selector, owner, alice));
         store.store(1);
 
         // new owner can store

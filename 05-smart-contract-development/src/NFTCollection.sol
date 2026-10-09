@@ -33,12 +33,12 @@ contract NFTCollection {
     uint256 public immutable MAX_PER_WALLET;
 
     address payable public owner;
-    uint96  public royaltyBps;
+    uint96 public royaltyBps;
 
-    bool    public revealed;
-    bool    public publicSaleOpen;
-    string  public baseURI;
-    string  public unrevealedURI;
+    bool public revealed;
+    bool public publicSaleOpen;
+    string public baseURI;
+    string public unrevealedURI;
     uint256 private _nextTokenId;
 
     // =========================================================
@@ -56,10 +56,10 @@ contract NFTCollection {
     //                   INTERFACE IDs (EIP-165)
     // =========================================================
 
-    bytes4 private constant _INTERFACE_ID_ERC721      = 0x80ac58cd;
+    bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
     bytes4 private constant _INTERFACE_ID_ERC721_META = 0x5b5e139f;
-    bytes4 private constant _INTERFACE_ID_ERC2981     = 0x2a55205a;
-    bytes4 private constant _INTERFACE_ID_ERC165      = 0x01ffc9a7;
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
 
     // =========================================================
     //                         EVENTS
@@ -108,17 +108,17 @@ contract NFTCollection {
         uint256 maxSupply,
         uint256 mintPrice,
         uint256 maxPerWallet,
-        uint96  _royaltyBps,
+        uint96 _royaltyBps,
         string memory _unrevealedURI
     ) {
-        name          = _name;
-        symbol        = _symbol;
-        MAX_SUPPLY    = maxSupply;
-        MINT_PRICE    = mintPrice;
+        name = _name;
+        symbol = _symbol;
+        MAX_SUPPLY = maxSupply;
+        MINT_PRICE = mintPrice;
         MAX_PER_WALLET = maxPerWallet;
-        royaltyBps    = _royaltyBps;
+        royaltyBps = _royaltyBps;
         unrevealedURI = _unrevealedURI;
-        owner         = payable(msg.sender);
+        owner = payable(msg.sender);
     }
 
     // =========================================================
@@ -202,10 +202,7 @@ contract NFTCollection {
     //                    EIP-2981 ROYALTIES
     // =========================================================
 
-    function royaltyInfo(uint256, uint256 salePrice)
-        external view
-        returns (address receiver, uint256 royaltyAmount)
-    {
+    function royaltyInfo(uint256, uint256 salePrice) external view returns (address receiver, uint256 royaltyAmount) {
         // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
         revert NotImplemented();
     }
@@ -267,12 +264,7 @@ contract NFTCollection {
         revert NotImplemented();
     }
 
-    function _checkOnERC721Received(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) private {
+    function _checkOnERC721Received(address from, address to, uint256 tokenId, bytes memory data) private {
         // TODO: implementasikan (lihat README → Contract 5 → Spesifikasi)
         revert NotImplemented();
     }
@@ -284,10 +276,7 @@ contract NFTCollection {
 }
 
 interface IERC721Receiver {
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external returns (bytes4);
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        returns (bytes4);
 }

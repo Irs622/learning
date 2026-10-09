@@ -13,13 +13,13 @@ contract VotingSystem {
 
     struct Proposal {
         uint256 id;
-        string  description;
+        string description;
         address creator;
         uint256 voteFor;
         uint256 voteAgainst;
         uint256 deadline;
-        bool    executed;
-        bool    exists;
+        bool executed;
+        bool exists;
     }
 
     // =========================================================
@@ -28,21 +28,16 @@ contract VotingSystem {
 
     address private _owner;
     uint256 private _nextProposalId;
-    uint256 public  quorumThreshold;
+    uint256 public quorumThreshold;
 
-    mapping(uint256 => Proposal)                 private _proposals;
+    mapping(uint256 => Proposal) private _proposals;
     mapping(uint256 => mapping(address => bool)) private _hasVoted;
 
     // =========================================================
     //                         EVENTS
     // =========================================================
 
-    event ProposalCreated(
-        uint256 indexed id,
-        address indexed creator,
-        string description,
-        uint256 deadline
-    );
+    event ProposalCreated(uint256 indexed id, address indexed creator, string description, uint256 deadline);
     event Voted(uint256 indexed proposalId, address indexed voter, bool support);
     event ProposalExecuted(uint256 indexed id, bool passed);
     event ProposalCancelled(uint256 indexed id);
@@ -89,23 +84,24 @@ contract VotingSystem {
     //                    EXTERNAL FUNCTIONS
     // =========================================================
 
-    function createProposal(
-        string calldata description,
-        uint256 durationSeconds
-    ) external onlyOwner returns (uint256 proposalId) {
+    function createProposal(string calldata description, uint256 durationSeconds)
+        external
+        onlyOwner
+        returns (uint256 proposalId)
+    {
         if (durationSeconds == 0) revert InvalidDuration();
 
         proposalId = _nextProposalId++;
 
         _proposals[proposalId] = Proposal({
-            id:          proposalId,
+            id: proposalId,
             description: description,
-            creator:     msg.sender,
-            voteFor:     0,
+            creator: msg.sender,
+            voteFor: 0,
             voteAgainst: 0,
-            deadline:    block.timestamp + durationSeconds,
-            executed:    false,
-            exists:      true
+            deadline: block.timestamp + durationSeconds,
+            executed: false,
+            exists: true
         });
 
         emit ProposalCreated(proposalId, msg.sender, description, block.timestamp + durationSeconds);
@@ -115,7 +111,7 @@ contract VotingSystem {
         Proposal storage proposal = _proposals[proposalId];
 
         if (block.timestamp >= proposal.deadline) revert VotingEnded(proposalId, proposal.deadline);
-        if (_hasVoted[proposalId][msg.sender])    revert AlreadyVoted(msg.sender, proposalId);
+        if (_hasVoted[proposalId][msg.sender]) revert AlreadyVoted(msg.sender, proposalId);
 
         _hasVoted[proposalId][msg.sender] = true;
 
@@ -162,10 +158,7 @@ contract VotingSystem {
     //                      VIEW FUNCTIONS
     // =========================================================
 
-    function getProposal(uint256 proposalId)
-        external view proposalExists(proposalId)
-        returns (Proposal memory)
-    {
+    function getProposal(uint256 proposalId) external view proposalExists(proposalId) returns (Proposal memory) {
         return _proposals[proposalId];
     }
 
@@ -174,15 +167,22 @@ contract VotingSystem {
     }
 
     function getResult(uint256 proposalId)
-        external view proposalExists(proposalId)
+        external
+        view
+        proposalExists(proposalId)
         returns (bool passed, uint256 forVotes, uint256 againstVotes)
     {
         Proposal storage p = _proposals[proposalId];
-        forVotes     = p.voteFor;
+        forVotes = p.voteFor;
         againstVotes = p.voteAgainst;
-        passed       = forVotes > againstVotes;
+        passed = forVotes > againstVotes;
     }
 
-    function owner() external view returns (address) { return _owner; }
-    function nextProposalId() external view returns (uint256) { return _nextProposalId; }
+    function owner() external view returns (address) {
+        return _owner;
+    }
+
+    function nextProposalId() external view returns (uint256) {
+        return _nextProposalId;
+    }
 }

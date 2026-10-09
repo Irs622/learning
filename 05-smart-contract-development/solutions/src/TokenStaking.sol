@@ -20,23 +20,23 @@ contract TokenStaking {
     // =========================================================
 
     struct StakeInfo {
-        uint256 amount;      // Tokens staked
-        uint256 stakedAt;    // Timestamp when staked
-        uint256 lockEnd;     // Timestamp when lock ends
-        uint256 lastClaim;   // Timestamp of last reward claim
+        uint256 amount; // Tokens staked
+        uint256 stakedAt; // Timestamp when staked
+        uint256 lockEnd; // Timestamp when lock ends
+        uint256 lastClaim; // Timestamp of last reward claim
     }
 
     // =========================================================
     //                      STATE VARIABLES
     // =========================================================
 
-    IERC20  public immutable STAKE_TOKEN;
+    IERC20 public immutable STAKE_TOKEN;
     address public immutable OWNER;
 
-    uint256 public constant MIN_STAKE      = 100 * 1e18;  // 100 tokens minimum
-    uint256 public constant LOCK_PERIOD    = 7 days;
-    uint256 public constant REWARD_RATE    = 100;          // 1% = 100 basis points
-    uint256 public constant BASIS_POINTS   = 10_000;
+    uint256 public constant MIN_STAKE = 100 * 1e18; // 100 tokens minimum
+    uint256 public constant LOCK_PERIOD = 7 days;
+    uint256 public constant REWARD_RATE = 100; // 1% = 100 basis points
+    uint256 public constant BASIS_POINTS = 10_000;
     uint256 public constant SECONDS_IN_DAY = 86_400;
 
     uint256 public totalStaked;
@@ -82,7 +82,7 @@ contract TokenStaking {
 
     constructor(address _stakeToken) {
         STAKE_TOKEN = IERC20(_stakeToken);
-        OWNER       = msg.sender;
+        OWNER = msg.sender;
     }
 
     // =========================================================
@@ -100,9 +100,9 @@ contract TokenStaking {
 
         // Effects
         _stakes[msg.sender] = StakeInfo({
-            amount:    amount,
-            stakedAt:  block.timestamp,
-            lockEnd:   block.timestamp + LOCK_PERIOD,
+            amount: amount,
+            stakedAt: block.timestamp,
+            lockEnd: block.timestamp + LOCK_PERIOD,
             lastClaim: block.timestamp
         });
         totalStaked += amount;
@@ -125,10 +125,10 @@ contract TokenStaking {
         }
 
         uint256 stakedAmount = info.amount;
-        uint256 reward       = _calculateReward(msg.sender);
+        uint256 reward = _calculateReward(msg.sender);
 
         // Effects
-        totalStaked         -= stakedAmount;
+        totalStaked -= stakedAmount;
         delete _stakes[msg.sender];
 
         emit Unstaked(msg.sender, stakedAmount, reward);
@@ -172,16 +172,15 @@ contract TokenStaking {
     /**
      * @notice Get staking info for a user.
      */
-    function getStakeInfo(address user) external view returns (
-        uint256 amount,
-        uint256 stakedAt,
-        uint256 lockEnd,
-        uint256 pendingReward
-    ) {
+    function getStakeInfo(address user)
+        external
+        view
+        returns (uint256 amount, uint256 stakedAt, uint256 lockEnd, uint256 pendingReward)
+    {
         StakeInfo storage info = _stakes[user];
-        amount        = info.amount;
-        stakedAt      = info.stakedAt;
-        lockEnd       = info.lockEnd;
+        amount = info.amount;
+        stakedAt = info.stakedAt;
+        lockEnd = info.lockEnd;
         pendingReward = _calculateReward(user);
     }
 

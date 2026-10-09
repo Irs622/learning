@@ -24,12 +24,12 @@ contract NFTCollection {
     uint256 public immutable MAX_PER_WALLET;
 
     address payable public owner;
-    uint96  public royaltyBps;
+    uint96 public royaltyBps;
 
-    bool    public revealed;
-    bool    public publicSaleOpen;
-    string  public baseURI;
-    string  public unrevealedURI;
+    bool public revealed;
+    bool public publicSaleOpen;
+    string public baseURI;
+    string public unrevealedURI;
     uint256 private _nextTokenId;
 
     // =========================================================
@@ -47,10 +47,10 @@ contract NFTCollection {
     //                   INTERFACE IDs (EIP-165)
     // =========================================================
 
-    bytes4 private constant _INTERFACE_ID_ERC721      = 0x80ac58cd;
+    bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
     bytes4 private constant _INTERFACE_ID_ERC721_META = 0x5b5e139f;
-    bytes4 private constant _INTERFACE_ID_ERC2981     = 0x2a55205a;
-    bytes4 private constant _INTERFACE_ID_ERC165      = 0x01ffc9a7;
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+    bytes4 private constant _INTERFACE_ID_ERC165 = 0x01ffc9a7;
 
     // =========================================================
     //                         EVENTS
@@ -99,17 +99,17 @@ contract NFTCollection {
         uint256 maxSupply,
         uint256 mintPrice,
         uint256 maxPerWallet,
-        uint96  _royaltyBps,
+        uint96 _royaltyBps,
         string memory _unrevealedURI
     ) {
-        name          = _name;
-        symbol        = _symbol;
-        MAX_SUPPLY    = maxSupply;
-        MINT_PRICE    = mintPrice;
+        name = _name;
+        symbol = _symbol;
+        MAX_SUPPLY = maxSupply;
+        MINT_PRICE = mintPrice;
         MAX_PER_WALLET = maxPerWallet;
-        royaltyBps    = _royaltyBps;
+        royaltyBps = _royaltyBps;
         unrevealedURI = _unrevealedURI;
-        owner         = payable(msg.sender);
+        owner = payable(msg.sender);
     }
 
     // =========================================================
@@ -216,11 +216,8 @@ contract NFTCollection {
     //                    EIP-2981 ROYALTIES
     // =========================================================
 
-    function royaltyInfo(uint256, uint256 salePrice)
-        external view
-        returns (address receiver, uint256 royaltyAmount)
-    {
-        receiver      = owner;
+    function royaltyInfo(uint256, uint256 salePrice) external view returns (address receiver, uint256 royaltyAmount) {
+        receiver = owner;
         royaltyAmount = (salePrice * royaltyBps) / 10_000;
     }
 
@@ -229,11 +226,8 @@ contract NFTCollection {
     // =========================================================
 
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return
-            interfaceId == _INTERFACE_ID_ERC721     ||
-            interfaceId == _INTERFACE_ID_ERC721_META ||
-            interfaceId == _INTERFACE_ID_ERC2981    ||
-            interfaceId == _INTERFACE_ID_ERC165;
+        return interfaceId == _INTERFACE_ID_ERC721 || interfaceId == _INTERFACE_ID_ERC721_META
+            || interfaceId == _INTERFACE_ID_ERC2981 || interfaceId == _INTERFACE_ID_ERC165;
     }
 
     // =========================================================
@@ -247,7 +241,7 @@ contract NFTCollection {
 
     function reveal(string calldata _baseURI) external onlyOwner {
         revealed = true;
-        baseURI  = _baseURI;
+        baseURI = _baseURI;
         emit Revealed(_baseURI);
     }
 
@@ -293,25 +287,14 @@ contract NFTCollection {
 
     function _checkApprovedOrOwner(address spender, uint256 tokenId) internal view {
         address tokenOwner = ownerOf(tokenId);
-        if (
-            spender != tokenOwner &&
-            !_operatorApprovals[tokenOwner][spender] &&
-            _tokenApprovals[tokenId] != spender
-        ) {
+        if (spender != tokenOwner && !_operatorApprovals[tokenOwner][spender] && _tokenApprovals[tokenId] != spender) {
             revert NotApproved(spender, tokenId);
         }
     }
 
-    function _checkOnERC721Received(
-        address from,
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) private {
+    function _checkOnERC721Received(address from, address to, uint256 tokenId, bytes memory data) private {
         if (to.code.length > 0) {
-            try IERC721Receiver(to).onERC721Received(msg.sender, from, tokenId, data) returns (
-                bytes4 retval
-            ) {
+            try IERC721Receiver(to).onERC721Received(msg.sender, from, tokenId, data) returns (bytes4 retval) {
                 if (retval != IERC721Receiver.onERC721Received.selector) {
                     revert UnsafeRecipient(to);
                 }
@@ -325,7 +308,10 @@ contract NFTCollection {
         if (value == 0) return "0";
         uint256 temp = value;
         uint256 digits;
-        while (temp != 0) { digits++; temp /= 10; }
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
         bytes memory buffer = new bytes(digits);
         while (value != 0) {
             digits--;
@@ -337,10 +323,7 @@ contract NFTCollection {
 }
 
 interface IERC721Receiver {
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external returns (bytes4);
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data)
+        external
+        returns (bytes4);
 }

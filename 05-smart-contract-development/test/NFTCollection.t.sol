@@ -9,9 +9,7 @@ import "src/NFTCollection.sol";
 // =========================================================
 
 contract GoodReceiver is IERC721Receiver {
-    function onERC721Received(address, address, uint256, bytes calldata)
-        external pure override returns (bytes4)
-    {
+    function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
 }
@@ -29,43 +27,36 @@ contract NFTCollectionTest is Test {
 
     address payable public owner = payable(makeAddr("owner"));
     address public alice = makeAddr("alice");
-    address public bob   = makeAddr("bob");
+    address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
 
-    uint256 constant MAX_SUPPLY     = 100;
-    uint256 constant MINT_PRICE     = 0.05 ether;
+    uint256 constant MAX_SUPPLY = 100;
+    uint256 constant MINT_PRICE = 0.05 ether;
     uint256 constant MAX_PER_WALLET = 5;
-    uint96  constant ROYALTY_BPS    = 500; // 5%
-    string  constant UNREVEALED_URI = "ipfs://QmUnrevealed/hidden.json";
-    string  constant BASE_URI       = "ipfs://QmCats/";
+    uint96 constant ROYALTY_BPS = 500; // 5%
+    string constant UNREVEALED_URI = "ipfs://QmUnrevealed/hidden.json";
+    string constant BASE_URI = "ipfs://QmCats/";
 
     function setUp() public {
         vm.prank(owner);
-        nft = new NFTCollection(
-            "PixelCats",
-            "PCAT",
-            MAX_SUPPLY,
-            MINT_PRICE,
-            MAX_PER_WALLET,
-            ROYALTY_BPS,
-            UNREVEALED_URI
-        );
+        nft =
+            new NFTCollection("PixelCats", "PCAT", MAX_SUPPLY, MINT_PRICE, MAX_PER_WALLET, ROYALTY_BPS, UNREVEALED_URI);
 
         vm.deal(alice, 100 ether);
-        vm.deal(bob,   100 ether);
+        vm.deal(bob, 100 ether);
         vm.deal(carol, 100 ether);
     }
 
     // ===== DEPLOYMENT =====
 
     function test_InitialState() public view {
-        assertEq(nft.name(),          "PixelCats");
-        assertEq(nft.symbol(),        "PCAT");
-        assertEq(nft.MAX_SUPPLY(),    MAX_SUPPLY);
-        assertEq(nft.MINT_PRICE(),    MINT_PRICE);
+        assertEq(nft.name(), "PixelCats");
+        assertEq(nft.symbol(), "PCAT");
+        assertEq(nft.MAX_SUPPLY(), MAX_SUPPLY);
+        assertEq(nft.MINT_PRICE(), MINT_PRICE);
         assertEq(nft.MAX_PER_WALLET(), MAX_PER_WALLET);
-        assertEq(nft.royaltyBps(),    ROYALTY_BPS);
-        assertEq(nft.totalSupply(),   0);
+        assertEq(nft.royaltyBps(), ROYALTY_BPS);
+        assertEq(nft.totalSupply(), 0);
         assertFalse(nft.revealed());
         assertFalse(nft.publicSaleOpen());
     }
@@ -120,10 +111,7 @@ contract NFTCollectionTest is Test {
         nft.toggleSale();
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(
-            NFTCollection.InsufficientPayment.selector,
-            0.04 ether, MINT_PRICE
-        ));
+        vm.expectRevert(abi.encodeWithSelector(NFTCollection.InsufficientPayment.selector, 0.04 ether, MINT_PRICE));
         nft.mint{value: 0.04 ether}(1);
     }
 
@@ -135,9 +123,7 @@ contract NFTCollectionTest is Test {
         nft.mint{value: MINT_PRICE * MAX_PER_WALLET}(MAX_PER_WALLET);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(
-            NFTCollection.MaxPerWalletReached.selector, alice, MAX_PER_WALLET
-        ));
+        vm.expectRevert(abi.encodeWithSelector(NFTCollection.MaxPerWalletReached.selector, alice, MAX_PER_WALLET));
         nft.mint{value: MINT_PRICE}(1);
     }
 
@@ -241,9 +227,7 @@ contract NFTCollectionTest is Test {
         nft.airdrop(alice, 1);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(
-            NFTCollection.UnsafeRecipient.selector, address(receiver)
-        ));
+        vm.expectRevert(abi.encodeWithSelector(NFTCollection.UnsafeRecipient.selector, address(receiver)));
         nft.safeTransferFrom(alice, address(receiver), 0);
     }
 

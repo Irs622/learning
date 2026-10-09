@@ -9,11 +9,11 @@ contract ERC20TokenTest is Test {
 
     address public owner = makeAddr("owner");
     address public alice = makeAddr("alice");
-    address public bob   = makeAddr("bob");
+    address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
 
     uint256 constant INITIAL_SUPPLY = 1_000_000; // 1M tokens (whole units)
-    uint256 constant INITIAL_WEI    = INITIAL_SUPPLY * 1e18;
+    uint256 constant INITIAL_WEI = INITIAL_SUPPLY * 1e18;
 
     function setUp() public {
         vm.prank(owner);
@@ -23,12 +23,12 @@ contract ERC20TokenTest is Test {
     // ===== DEPLOYMENT =====
 
     function test_InitialState() public view {
-        assertEq(token.name(),        "TestToken");
-        assertEq(token.symbol(),      "TST");
-        assertEq(token.decimals(),    18);
+        assertEq(token.name(), "TestToken");
+        assertEq(token.symbol(), "TST");
+        assertEq(token.decimals(), 18);
         assertEq(token.totalSupply(), INITIAL_WEI);
         assertEq(token.balanceOf(owner), INITIAL_WEI);
-        assertEq(token.owner(),       owner);
+        assertEq(token.owner(), owner);
     }
 
     // ===== TRANSFER =====
@@ -67,10 +67,7 @@ contract ERC20TokenTest is Test {
     function test_RevertWhen_Transfer_InsufficientBalance() public {
         uint256 tooMuch = INITIAL_WEI + 1;
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ERC20Token.InsufficientBalance.selector,
-            owner, INITIAL_WEI, tooMuch
-        ));
+        vm.expectRevert(abi.encodeWithSelector(ERC20Token.InsufficientBalance.selector, owner, INITIAL_WEI, tooMuch));
         token.transfer(alice, tooMuch);
     }
 
@@ -122,7 +119,7 @@ contract ERC20TokenTest is Test {
 
     function test_TransferFrom_PartialAllowance() public {
         uint256 approved = 500 * 1e18;
-        uint256 spent    = 200 * 1e18;
+        uint256 spent = 200 * 1e18;
 
         vm.prank(owner);
         token.approve(alice, approved);
@@ -146,16 +143,13 @@ contract ERC20TokenTest is Test {
 
     function test_RevertWhen_TransferFrom_ExceedsAllowance() public {
         uint256 approved = 100 * 1e18;
-        uint256 over     = 101 * 1e18;
+        uint256 over = 101 * 1e18;
 
         vm.prank(owner);
         token.approve(alice, approved);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(
-            ERC20Token.InsufficientAllowance.selector,
-            owner, alice, approved, over
-        ));
+        vm.expectRevert(abi.encodeWithSelector(ERC20Token.InsufficientAllowance.selector, owner, alice, approved, over));
         token.transferFrom(owner, bob, over);
     }
 
@@ -182,10 +176,9 @@ contract ERC20TokenTest is Test {
         token.approve(alice, 100 * 1e18);
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(
-            ERC20Token.InsufficientAllowance.selector,
-            owner, alice, 100 * 1e18, 200 * 1e18
-        ));
+        vm.expectRevert(
+            abi.encodeWithSelector(ERC20Token.InsufficientAllowance.selector, owner, alice, 100 * 1e18, 200 * 1e18)
+        );
         token.decreaseAllowance(alice, 200 * 1e18);
     }
 
@@ -247,10 +240,7 @@ contract ERC20TokenTest is Test {
 
     function test_RevertWhen_Burn_InsufficientBalance() public {
         vm.prank(alice); // alice has 0 balance
-        vm.expectRevert(abi.encodeWithSelector(
-            ERC20Token.InsufficientBalance.selector,
-            alice, 0, 1
-        ));
+        vm.expectRevert(abi.encodeWithSelector(ERC20Token.InsufficientBalance.selector, alice, 0, 1));
         token.burn(1);
     }
 

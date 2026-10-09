@@ -9,11 +9,11 @@ contract VotingSystemTest is Test {
 
     address public owner = makeAddr("owner");
     address public alice = makeAddr("alice");
-    address public bob   = makeAddr("bob");
+    address public bob = makeAddr("bob");
     address public carol = makeAddr("carol");
-    address public dave  = makeAddr("dave");
+    address public dave = makeAddr("dave");
 
-    uint256 constant QUORUM   = 3;
+    uint256 constant QUORUM = 3;
     uint256 constant DURATION = 7 days;
 
     function setUp() public {
@@ -29,9 +29,12 @@ contract VotingSystemTest is Test {
     }
 
     function _voteThree(uint256 pid) internal {
-        vm.prank(alice); voting.vote(pid, true);
-        vm.prank(bob);   voting.vote(pid, true);
-        vm.prank(carol); voting.vote(pid, false);
+        vm.prank(alice);
+        voting.vote(pid, true);
+        vm.prank(bob);
+        voting.vote(pid, true);
+        vm.prank(carol);
+        voting.vote(pid, false);
     }
 
     // ===== PROPOSAL CREATION =====
@@ -72,9 +75,12 @@ contract VotingSystemTest is Test {
 
     function test_Vote_ForAndAgainst() public {
         _createProposal("Test");
-        vm.prank(alice); voting.vote(0, true);
-        vm.prank(bob);   voting.vote(0, false);
-        vm.prank(carol); voting.vote(0, true);
+        vm.prank(alice);
+        voting.vote(0, true);
+        vm.prank(bob);
+        voting.vote(0, false);
+        vm.prank(carol);
+        voting.vote(0, true);
 
         VotingSystem.Proposal memory p = voting.getProposal(0);
         assertEq(p.voteFor, 2);
@@ -104,9 +110,7 @@ contract VotingSystemTest is Test {
         voting.vote(0, true);
 
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(VotingSystem.AlreadyVoted.selector, alice, 0)
-        );
+        vm.expectRevert(abi.encodeWithSelector(VotingSystem.AlreadyVoted.selector, alice, 0));
         voting.vote(0, true);
     }
 
@@ -115,9 +119,7 @@ contract VotingSystemTest is Test {
         vm.warp(block.timestamp + DURATION + 1);
 
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(
-            VotingSystem.VotingEnded.selector, 0, block.timestamp - 1
-        ));
+        vm.expectRevert(abi.encodeWithSelector(VotingSystem.VotingEnded.selector, 0, block.timestamp - 1));
         voting.vote(0, true);
     }
 
@@ -146,9 +148,12 @@ contract VotingSystemTest is Test {
 
     function test_Execute_Failed() public {
         _createProposal("Failing");
-        vm.prank(alice); voting.vote(0, false);
-        vm.prank(bob);   voting.vote(0, false);
-        vm.prank(carol); voting.vote(0, false);
+        vm.prank(alice);
+        voting.vote(0, false);
+        vm.prank(bob);
+        voting.vote(0, false);
+        vm.prank(carol);
+        voting.vote(0, false);
 
         vm.warp(block.timestamp + DURATION + 1);
 
@@ -164,9 +169,7 @@ contract VotingSystemTest is Test {
         _voteThree(0);
 
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSelector(
-            VotingSystem.VotingNotEnded.selector, 0, block.timestamp + DURATION
-        ));
+        vm.expectRevert(abi.encodeWithSelector(VotingSystem.VotingNotEnded.selector, 0, block.timestamp + DURATION));
         voting.executeProposal(0);
     }
 
@@ -185,8 +188,10 @@ contract VotingSystemTest is Test {
 
     function test_RevertWhen_QuorumNotMet() public {
         _createProposal("Low turnout");
-        vm.prank(alice); voting.vote(0, true);
-        vm.prank(bob);   voting.vote(0, true);
+        vm.prank(alice);
+        voting.vote(0, true);
+        vm.prank(bob);
+        voting.vote(0, true);
         // Only 2 votes, quorum = 3
 
         vm.warp(block.timestamp + DURATION + 1);
@@ -235,8 +240,10 @@ contract VotingSystemTest is Test {
         _createProposal("Proposal 0");
         _createProposal("Proposal 1");
 
-        vm.prank(alice); voting.vote(0, true);
-        vm.prank(alice); voting.vote(1, false);
+        vm.prank(alice);
+        voting.vote(0, true);
+        vm.prank(alice);
+        voting.vote(1, false);
 
         VotingSystem.Proposal memory p0 = voting.getProposal(0);
         VotingSystem.Proposal memory p1 = voting.getProposal(1);

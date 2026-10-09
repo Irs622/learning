@@ -19,7 +19,7 @@ import "src/TokenStaking.sol";
 contract DeployAll is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
-        address deployer    = vm.addr(deployerKey);
+        address deployer = vm.addr(deployerKey);
 
         console.log("=== Phase 5 Deployment ===");
         console.log("Deployer:", deployer);
@@ -39,8 +39,8 @@ contract DeployAll is Script {
 
         // ── Contract 3: Crowdfunding ───────────────────────────
         Crowdfunding crowdfunding = new Crowdfunding(
-            1 ether,   // goal: 1 ETH
-            30 days    // duration: 30 days
+            1 ether, // goal: 1 ETH
+            30 days // duration: 30 days
         );
         console.log("Crowdfunding:   ", address(crowdfunding));
 
@@ -48,7 +48,7 @@ contract DeployAll is Script {
         ERC20Token token = new ERC20Token(
             "LearningToken",
             "LRN",
-            1_000_000   // 1M initial supply
+            1_000_000 // 1M initial supply
         );
         console.log("ERC20Token:     ", address(token));
 
@@ -56,10 +56,10 @@ contract DeployAll is Script {
         NFTCollection nftCollection = new NFTCollection(
             "PixelCats",
             "PCAT",
-            1000,            // max supply
-            0.05 ether,      // mint price
-            5,               // max per wallet
-            500,             // 5% royalty
+            1000, // max supply
+            0.05 ether, // mint price
+            5, // max per wallet
+            500, // 5% royalty
             "ipfs://QmUnrevealed/hidden.json"
         );
         console.log("NFTCollection:  ", address(nftCollection));

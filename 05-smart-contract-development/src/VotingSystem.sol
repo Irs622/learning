@@ -22,13 +22,13 @@ contract VotingSystem {
 
     struct Proposal {
         uint256 id;
-        string  description;
+        string description;
         address creator;
         uint256 voteFor;
         uint256 voteAgainst;
         uint256 deadline;
-        bool    executed;
-        bool    exists;
+        bool executed;
+        bool exists;
     }
 
     // =========================================================
@@ -37,21 +37,16 @@ contract VotingSystem {
 
     address private _owner;
     uint256 private _nextProposalId;
-    uint256 public  quorumThreshold;
+    uint256 public quorumThreshold;
 
-    mapping(uint256 => Proposal)                 private _proposals;
+    mapping(uint256 => Proposal) private _proposals;
     mapping(uint256 => mapping(address => bool)) private _hasVoted;
 
     // =========================================================
     //                         EVENTS
     // =========================================================
 
-    event ProposalCreated(
-        uint256 indexed id,
-        address indexed creator,
-        string description,
-        uint256 deadline
-    );
+    event ProposalCreated(uint256 indexed id, address indexed creator, string description, uint256 deadline);
     event Voted(uint256 indexed proposalId, address indexed voter, bool support);
     event ProposalExecuted(uint256 indexed id, bool passed);
     event ProposalCancelled(uint256 indexed id);
@@ -98,10 +93,11 @@ contract VotingSystem {
     //                    EXTERNAL FUNCTIONS
     // =========================================================
 
-    function createProposal(
-        string calldata description,
-        uint256 durationSeconds
-    ) external onlyOwner returns (uint256 proposalId) {
+    function createProposal(string calldata description, uint256 durationSeconds)
+        external
+        onlyOwner
+        returns (uint256 proposalId)
+    {
         // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
         revert NotImplemented();
     }
@@ -130,10 +126,7 @@ contract VotingSystem {
     //                      VIEW FUNCTIONS
     // =========================================================
 
-    function getProposal(uint256 proposalId)
-        external view proposalExists(proposalId)
-        returns (Proposal memory)
-    {
+    function getProposal(uint256 proposalId) external view proposalExists(proposalId) returns (Proposal memory) {
         // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
         revert NotImplemented();
     }
@@ -144,7 +137,9 @@ contract VotingSystem {
     }
 
     function getResult(uint256 proposalId)
-        external view proposalExists(proposalId)
+        external
+        view
+        proposalExists(proposalId)
         returns (bool passed, uint256 forVotes, uint256 againstVotes)
     {
         // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
@@ -155,6 +150,7 @@ contract VotingSystem {
         // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
         revert NotImplemented();
     }
+
     function nextProposalId() external view returns (uint256) {
         // TODO: implementasikan (lihat README → Contract 2 → Spesifikasi)
         revert NotImplemented();
