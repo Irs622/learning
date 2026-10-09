@@ -4,6 +4,7 @@
 > **Phase**: 13 of 13
 > **Estimated Time**: 🚀 Intensif 30+ hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 11+ minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [08-smart-contract-security](../08-smart-contract-security/README.md) ✅ | [11-tokenomics-and-defi](../11-tokenomics-and-defi/README.md) ✅ | [12-layer-2](../12-layer-2/README.md) ✅
+> **Status verifikasi**: **Reviewed (parsial)** · 9 Okt 2026 · EntryPoint, Noir & pin dependency dicek ke sumber resmi — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -14,7 +15,7 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 - Merancang dan mengaudit **upgradeable contract** (Transparent, UUPS, Beacon) beserta risiko storage collision.
 - Mengamankan protokol dengan **multisig (Safe)** dan **timelock** sebagai infrastruktur institusional.
 - Membangun **DAO governance** on-chain (OpenZeppelin Governor + ERC20Votes + Timelock) dan mengenali serangan governance.
-- Memahami dan mengimplementasikan **Account Abstraction**: ERC-4337 (UserOperation, EntryPoint, Bundler, Paymaster) dan EIP-7702.
+- **Mengimplementasikan** smart account ERC-4337 yang lolos `EntryPoint.handleOps` dan **menjelaskan** perbedaan modelnya dengan EIP-7702.
 - Menganalisis **MEV** secara mendalam: supply chain (searcher → builder → proposer), PBS, MEV-Boost, dan perlindungan user.
 - Menggunakan **Zero-Knowledge proof** di level aplikasi (Circom/Noir → verifier Solidity) untuk membership & privasi.
 - Menyusun **jalur karier** sebagai Web3 Security / Smart Contract Engineer setelah roadmap selesai.
@@ -30,19 +31,24 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 
 ---
 
+> ⚖️ **Etika**: investigasi MEV (C5) cukup dengan **membaca** data on-chain; jangan menjalankan bot front-running/sandwich terhadap pengguna nyata. Semua eksperimen account abstraction & paymaster dilakukan di anvil/testnet dengan akun sendiri. Aturan lengkap: [Phase 8 — Etika & Batasan Hukum](../08-smart-contract-security/README.md).
+
 ## ⚙️ Setup
 
 ```bash
 cd 13-advanced-web3/
 forge init lab --no-git
 cd lab
-forge install OpenZeppelin/openzeppelin-contracts --no-git
-forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-git
-forge install OpenZeppelin/openzeppelin-foundry-upgrades --no-git   # validasi storage layout saat upgrade
-forge install eth-infinitism/account-abstraction@v0.9.0 --no-git    # ERC-4337 reference (pin versi!)
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
+forge install OpenZeppelin/openzeppelin-contracts-upgradeable@v5.6.1 --no-git
+# validasi storage layout saat upgrade
+forge install OpenZeppelin/openzeppelin-foundry-upgrades@v0.4.2 --no-git
+# ERC-4337 reference (pin versi!)
+forge install eth-infinitism/account-abstraction@v0.9.0 --no-git
 
 # ZK tooling (pilih salah satu)
-# Noir:   curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash && noirup
+# Noir:   curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
+#         noirup -v 1.0.0-rc.4    # pin versi; Noir 1.0 masih release candidate (Okt 2026)
 # Circom: lihat https://docs.circom.io/getting-started/installation/
 ```
 
@@ -114,7 +120,8 @@ cast storage <PROXY> 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505
 | **`immutable` di implementation** | Nilainya tertanam di bytecode implementation, bukan storage proxy — kadang memang diinginkan, kadang jebakan |
 
 ```solidity
-// ✅ ERC-7201 namespaced storage (OpenZeppelin v5): hindari collision dengan struct di slot terhitung
+// ✅ ERC-7201 namespaced storage (OpenZeppelin v5): hindari collision dengan struct di slot
+// terhitung
 /// @custom:storage-location erc7201:myproject.vault
 struct VaultStorage { uint256 totalAssets; mapping(address => uint256) shares; }
 ```
@@ -401,7 +408,7 @@ User tx ─▶ Private RPC ────┤
                      PROPOSER   (validator memilih bid tertinggi via MEV-Boost)
 ```
 
-**PBS (Proposer-Builder Separation)**: validator tidak perlu canggih untuk mendapatkan MEV; builder bersaing. Saat ini PBS berjalan off-protocol lewat MEV-Boost; *enshrined PBS* masih dalam riset.
+**PBS (Proposer-Builder Separation)**: validator tidak perlu canggih untuk mendapatkan MEV; builder bersaing. Saat ini PBS berjalan off-protocol lewat MEV-Boost. *Enshrined PBS* (**ePBS, EIP-7732**) direncanakan masuk upgrade **Glamsterdam** bersama *block-level access lists* (EIP-7928) — per 9 Okt 2026 **belum aktif** dan belum ada tanggal mainnet resmi (target yang beredar: Q4 2026). Verifikasi statusnya di [roadmap ethereum.org](https://ethereum.org/roadmap/) sebelum mengajarkannya sebagai fitur aktif.
 
 ## Jenis MEV
 
@@ -646,6 +653,19 @@ SECURITY:
 - [ ] Batch `approve + action` berhasil dalam satu UserOp
 - [ ] Address account counterfactual sama dengan address setelah deploy
 
+
+---
+
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `Upgrades.validateUpgrade` gagal | Layout storage berubah atau V2 tidak mewarisi `UUPSUpgradeable` | Tambahkan variabel hanya di akhir / pakai ERC-7201; pastikan fungsi upgrade tetap ada |
+| `FailedOp(0, "AA21 didn't pay prefund")` | Account tidak punya deposit/ETH untuk gas | Isi deposit di EntryPoint (`depositTo`) atau gunakan paymaster |
+| `FailedOp(..., "AA24 signature error")` | Signature tidak cocok dengan `userOpHash` versi EntryPoint yang dipakai | Hitung hash via `entryPoint.getUserOpHash(op)` dan tanda tangani hash itu |
+| Error compile Noir / fungsi stdlib tidak ditemukan | Versi Noir berbeda dari materi | `noirup -v 1.0.0-rc.4` lalu cek `nargo --version` |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
 
 ---
 

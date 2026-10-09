@@ -4,6 +4,7 @@
 > **Phase**: 10 of 13
 > **Estimated Time**: 🚀 Intensif 14–21 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 5–8 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [09-web3-frontend](../09-web3-frontend/README.md) ✅ | [01-blockchain-fundamentals](../01-blockchain-fundamentals/README.md) ✅ (reorg & finality)
+> **Status verifikasi**: **Reviewed (parsial)** · 9 Okt 2026 · inspeksi teks saja; tidak ada kode untuk diuji — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -12,7 +13,7 @@
 Setelah menyelesaikan fase ini, Anda akan mampu:
 
 - Menjelaskan mengapa DApp nyata **tetap membutuhkan backend**, dan apa yang boleh/tidak boleh dipercayakan kepadanya.
-- Menguasai **JSON-RPC** untuk data historis: `eth_getLogs`, topic filtering, batas rentang block, dan rate limit provider.
+- **Mengambil** data historis dengan `eth_getLogs` (topic filtering, chunking adaptif, retry saat rate limit) untuk rentang ≥100.000 block.
 - Membangun **custom event indexer** (Node.js + Viem + PostgreSQL) yang idempotent dan bisa dilanjutkan dari checkpoint.
 - Menangani **chain reorganization** dengan benar (confirmation depth, block hash tracking, rollback).
 - Menggunakan **The Graph / subgraph** dan memahami trade-off dibanding indexer custom.
@@ -631,6 +632,18 @@ Indexer + API untuk **semua contract Phase 5** di anvil dan Sepolia.
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `query returned more than 10000 results` / `block range too large` | Rentang `getLogs` terlalu besar | Chunking adaptif (C2 Soal 3) |
+| Event tersimpan ganda | Chunk diproses ulang tanpa kunci unik | Primary key `(chain_id, tx_hash, log_index)` + `ON CONFLICT DO NOTHING` |
+| Data "hantu" setelah reorg | Mengindeks sampai head tanpa konfirmasi | Confirmation depth / finalized tag / rollback berbasis parent hash (C4) |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -687,7 +700,7 @@ git commit -m "test: chaos testing for indexer — flaky rpc, reorg, crash, dupl
 ## 🔗 Resources
 
 ### Wajib Baca
-- [Ethereum JSON-RPC Specification](https://ethereum.github.io/execution-apis/api-documentation/)
+- [Ethereum JSON-RPC API (ethereum.org)](https://ethereum.org/en/developers/docs/apis/json-rpc/) · [Execution API spec](https://ethereum.github.io/execution-apis/)
 - [Viem — getLogs](https://viem.sh/docs/actions/public/getLogs)
 - [The Graph Docs](https://thegraph.com/docs/en/)
 - [EIP-1271: Standard Signature Validation for Contracts](https://eips.ethereum.org/EIPS/eip-1271)

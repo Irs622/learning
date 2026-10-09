@@ -270,7 +270,11 @@ Repository ini menerapkan **Conventional Commits**:
 ├── 11-tokenomics-and-defi/             # Phase 11
 ├── 12-layer-2/                         # Phase 12
 ├── 13-advanced-web3/                   # Phase 13
-└── projects/                           # Indeks Milestone Projects (L1 - L10)
+├── projects/                           # Indeks Milestone Projects (L1 - L10) + spesifikasi L5
+├── GLOSSARY.md                         # Istilah teknis Inggris ↔ Indonesia
+├── PILOT.md                            # Protokol uji coba dengan pembelajar
+├── CONTRIBUTING.md                     # Cara melaporkan masalah & berkontribusi
+└── LICENSE                             # MIT (kode) + CC BY-SA 4.0 (materi)
 ```
 
 ---
@@ -295,6 +299,8 @@ Setiap `README.md` fase memakai struktur yang sama:
 | **Progress Tracker** | Centang `[x]` hanya setelah benar-benar selesai |
 | **What I Learned / Notes** | Ditulis oleh Anda, bukan template |
 
+**📖 Istilah** — istilah teknis dipakai dalam bahasa Inggris; artinya ada di [`GLOSSARY.md`](GLOSSARY.md).
+
 **🎚️ Sistem Tingkat** — setiap Mini Project & Challenge dibagi tiga:
 
 | Tingkat | Aturan |
@@ -309,6 +315,36 @@ Setiap `README.md` fase memakai struktur yang sama:
 - Phase 5 memakai pola **Test-Driven**: `src/` berisi *starter* (antarmuka lengkap, body fungsi `revert NotImplemented()`), `test/` berisi test sebagai spesifikasi, dan jawaban ada di `05-smart-contract-development/solutions/` (`FOUNDRY_PROFILE=solutions forge test` — hanya setelah mencoba sendiri).
 - Phase lain: kode Anda ditulis di subfolder **`lab/`** (`forge init lab --no-git`) agar `README.md` materi tidak tertimpa. Phase 9 & 10 memakai subfolder `dapp/` dan `indexer/`.
 - Dependencies (`lib/`), build output, dan `.env` di-ignore oleh `.gitignore` root — install ulang dengan `forge install` sesuai Setup tiap fase.
+
+---
+
+## ✅ Status Verifikasi Materi
+
+| Status | Arti |
+|---|---|
+| **Draft** | Ditulis, belum direview akurasinya |
+| **Reviewed** | Akurasi teknis direview baris per baris; klaim yang cepat berubah dicek ke sumber resmi |
+| **Reviewed (parsial)** | Klaim yang cepat berubah & potongan kode kunci sudah dicek, tetapi teks belum direview baris per baris oleh reviewer independen |
+| **Tested** | Perintah & kode dijalankan dari repo bersih dan hasilnya sesuai yang dijanjikan materi |
+| **Verified** | Tested + CI hijau + sudah diuji oleh pelajar nyata (lihat [`PILOT.md`](PILOT.md)) |
+
+| Phase | Status (9 Okt 2026) | Bukti |
+|---|---|---|
+| 01 | **Reviewed** | teks direview penuh; contoh JS kunci & on-chain diuji |
+| 02 | **Reviewed** | teks direview penuh; 7/7 snippet contract compile |
+| 03 | **Reviewed** | teks direview penuh; derivasi address/HD & contract signature diuji |
+| 04 | **Reviewed** | teks direview penuh; snippet utama di-compile |
+| 05 | **Tested** | build, format, 97 test referensi, 19 test jawaban, simulasi deploy lulus |
+| 06 | **Tested** | setup lab & contoh MyToken (12/12 test) lulus dari README |
+| 07 | **Reviewed (parsial)** | challenge BuggyVault & handler di-compile, bug terbukti terdeteksi invariant |
+| 08 | **Reviewed (parsial)** | LoyaltyRewards & contoh CoinFlip (exploit 5/5) diuji |
+| 09 | **Reviewed (parsial)** | snippet utama lolos tsc dengan versi di-pin; belum `next build` |
+| 10 | **Reviewed (parsial)** | inspeksi teks saja; tidak ada kode untuk diuji |
+| 11 | **Reviewed (parsial)** | contoh numerik dihitung ulang; kode belum diuji |
+| 12 | **Reviewed (parsial)** | RPC L2 & parameter blob mainnet diverifikasi on-chain |
+| 13 | **Reviewed (parsial)** | EntryPoint, Noir & pin dependency dicek ke sumber resmi |
+
+> Belum ada fase yang berstatus **Verified**: materi belum diuji oleh pelajar lain, dan CI GitHub Actions belum pernah berjalan sukses. Toolchain yang dipakai untuk verifikasi: Foundry v1.7.1, solc 0.8.24, forge-std v1.17.0, OpenZeppelin v5.6.1, Node 25, wagmi 2.x / viem 2.x.
 
 ---
 

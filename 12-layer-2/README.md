@@ -4,6 +4,7 @@
 > **Phase**: 12 of 13
 > **Estimated Time**: 🚀 Intensif 10–14 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 4–5 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [01-blockchain-fundamentals](../01-blockchain-fundamentals/README.md) ✅ | [02-ethereum-and-evm](../02-ethereum-and-evm/README.md) ✅ | [11-tokenomics-and-defi](../11-tokenomics-and-defi/README.md) ✅
+> **Status verifikasi**: **Reviewed (parsial)** · 9 Okt 2026 · RPC L2 & parameter blob mainnet diverifikasi on-chain — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -14,7 +15,7 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 - Menjelaskan mengapa Ethereum memilih **rollup-centric roadmap** untuk scaling.
 - Menguraikan anatomi **rollup**: sequencer, batch, state root, data availability, dan bridge.
 - Membandingkan **Optimistic Rollup** (fraud proof, challenge period) dan **ZK Rollup** (validity proof).
-- Memahami **data availability** dan dampak **EIP-4844 (blobs)** terhadap biaya L2.
+- **Menjelaskan** peran data availability, dampak **EIP-4844** dan **PeerDAS (Fusaka)** terhadap biaya L2, serta **memverifikasi** parameter blob jaringan saat ini.
 - Menganalisis **bridge** & **cross-chain messaging** beserta model keamanannya.
 - Men-deploy dan menguji contract di **L2 (Base, Arbitrum, Optimism)** dengan memperhatikan perbedaan perilaku EVM, model gas, dan finality.
 
@@ -317,7 +318,32 @@ Blob = ~128 KB data yang:
   - Punya pasar fee terpisah (blob base fee, mekanisme mirip EIP-1559)
 ```
 
-Dampak: biaya tx di rollup turun drastis karena data tidak lagi bersaing dengan eksekusi L1. Langkah berikutnya, **full danksharding / PeerDAS**, menambah kapasitas blob dengan *data availability sampling*.
+Dampak: biaya tx di rollup turun drastis karena data tidak lagi bersaing dengan eksekusi L1.
+
+## Setelah EIP-4844: Pectra & Fusaka
+
+| Upgrade | Aktif di mainnet | Perubahan DA yang relevan |
+|---|---|---|
+| **Pectra** | 7 Mei 2025 | EIP-7691: target/max blob per block naik dari 3/6 → **6/9**. EIP-7623: lantai biaya calldata (10/40 gas per byte nol/non-nol) untuk transaksi data-heavy — mendorong rollup memakai blob, bukan calldata |
+| **Fusaka** | 3 Des 2025 | **PeerDAS (EIP-7594)**: node tidak lagi mengunduh seluruh blob, cukup *sampling* sebagian kecil dan tetap yakin secara kriptografis bahwa seluruh data tersedia → kapasitas blob bisa dinaikkan jauh lebih besar tanpa memperberat node. **BPO forks (EIP-7892)**: fork "konfigurasi saja" untuk menaikkan target/max blob bertahap tanpa hard fork penuh |
+
+> ✅ *Terverifikasi 9 Okt 2026 via `eth_config` di mainnet: blob **target 14 / max 21** (fork terakhir aktif 7 Jan 2026).*
+
+Langkah selanjutnya di roadmap adalah **full danksharding** — kapasitas blob jauh lebih besar dengan sampling dua dimensi. Ini **belum aktif**.
+
+### Latihan: Verifikasi Sendiri Status Jaringan
+
+```bash
+# Konfigurasi fork aktif & jadwal blob (EIP-7910)
+cast rpc eth_config --rpc-url https://ethereum-rpc.publicnode.com | jq '.current.blobSchedule'
+
+# Apakah Fusaka aktif? Eksekusi opcode CLZ (EIP-7939, bagian dari Fusaka).
+# Bytecode: PUSH1 1, CLZ, simpan ke memory, RETURN 32 byte → 255 jika aktif
+cast rpc eth_call '{"data":"0x60011e60005260206000f3"}' latest \
+  --rpc-url https://ethereum-rpc.publicnode.com
+```
+
+Bandingkan hasil Anda dengan tabel di atas. Jika angka blob sudah berbeda, berarti ada BPO fork baru — catat di **🗒️ Notes**.
 
 ## Alternative DA
 
@@ -558,6 +584,18 @@ SECURITY:
 - [ ] Panggilan langsung ke `setFee` (bukan via messenger) → revert
 - [ ] Pesan sah mengubah parameter & emit event
 
+
+---
+
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| Verifikasi contract di explorer L2 gagal | Chain belum dikenal Foundry / API lama | `--chain <nama>` atau `--verifier-url "https://api.etherscan.io/v2/api?chainid=<id>"` |
+| `insufficient funds` di L2 testnet | Belum punya ETH di L2 | Bridge dari Sepolia lewat canonical bridge atau faucet L2 |
+| Waktu/deadline berbeda dari perkiraan | Block time & `block.number` L2 berbeda dari L1 | Gunakan `block.timestamp` (C7 Soal 8) |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
 
 ---
 

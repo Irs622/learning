@@ -4,6 +4,7 @@
 > **Phase**: 6 of 13
 > **Estimated Time**: 🚀 Intensif 7–10 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 3–4 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [04-solidity-fundamentals](../04-solidity-fundamentals/README.md) ✅
+> **Status verifikasi**: **Tested** · 9 Okt 2026 · setup lab & contoh MyToken (12/12 test) lulus dari README — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -92,13 +93,19 @@ FOUNDRY TOOLCHAIN
 # === INSTALASI (Mac/Linux) ===
 
 # 1. Download dan install foundryup (installer manager)
+# ⚠️ `curl ... | bash` menjalankan script dari internet tanpa Anda baca. Untuk mesin penting,
+#    unduh dulu, baca isinya, lalu jalankan:
+#      curl -L https://foundry.paradigm.xyz -o foundryup-install.sh && less foundryup-install.sh
+# && bash foundryup-install.sh
 curl -L https://foundry.paradigm.xyz | bash
 
 # 2. Restart terminal atau source shell config
 source ~/.bashrc   # atau ~/.zshrc
 
-# 3. Install foundry tools terbaru
-foundryup
+# 3. Install foundry tools
+foundryup             # versi stabil terbaru
+# Untuk hasil yang identik dengan materi ini, pin ke versi yang diverifikasi:
+# foundryup -i v1.7.1
 
 # 4. Verifikasi instalasi
 forge --version    # forge Version: 1.x.x (stable sejak 2025)
@@ -180,7 +187,8 @@ gas_price = 20000000000        # Default gas price untuk test (20 gwei)
 
 # EVM version
 evm_version = "paris"          # Default Foundry terbaru mengikuti hard fork terkini (misal "prague"/"osaka");
-                               # pin ke versi yang didukung SEMUA chain target Anda (L2 kadang tertinggal)
+                               # pin ke versi yang didukung SEMUA chain target Anda (L2 kadang
+                               # tertinggal)
 
 # Verbosity level test output
 verbosity = 2                  # 0=minimal, 1=print test names, 2=print logs, 3=traces, 4=full traces
@@ -243,7 +251,7 @@ forge install OpenZeppelin/openzeppelin-contracts
 # Install OpenZeppelin sebagai git submodule
 # → Ditambahkan ke lib/ dan .gitmodules
 
-forge install OpenZeppelin/openzeppelin-contracts@v5.0.0
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1
 # Install versi spesifik (best practice: pin ke versi!)
 
 forge install foundry-rs/forge-std
@@ -340,8 +348,8 @@ forge init lab --no-git
 cd lab
 
 # Install OpenZeppelin:
-forge install OpenZeppelin/openzeppelin-contracts --no-git
-forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-git
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
+forge install OpenZeppelin/openzeppelin-contracts-upgradeable@v5.6.1 --no-git
 
 # Update foundry.toml:
 # Tambahkan remappings = ["@openzeppelin/=lib/openzeppelin-contracts/"]
@@ -507,6 +515,7 @@ vm.expectRevert(abi.encodeWithSelector(
 ## console.log untuk Debugging
 
 ```solidity
+// ℹ️ Ilustrasi — fungsi test di bawah seharusnya berada di dalam contract test (lihat C3).
 import "forge-std/console.sol";
 
 contract MyContract {
@@ -527,7 +536,8 @@ contract MyContract {
 function test_ComplexCalc() public {
     // forge test -vv akan menampilkan semua console.log
     uint256 result = calc.complexCalculation(42);  // `calc` = instance MyContract
-                                                   // (`contract` adalah keyword — tidak bisa jadi nama variabel)
+                                                   // (`contract` adalah keyword — tidak bisa
+                                                   // jadi nama variabel)
     assertEq(result, 184);
 }
 ```
@@ -936,6 +946,7 @@ function test_CallsExternalContract() public {
 ## Fork Testing: Test terhadap Live Mainnet State
 
 ```solidity
+// ℹ️ Ilustrasi — butuh interface `IERC20`, variabel `alice`, dan RPC mainnet (`MAINNET_RPC_URL`).
 // Foundry bisa fork state mainnet/testnet untuk test!
 // Ini sangat powerful untuk:
 // - Test integrasi dengan protocol DeFi yang sudah ada
@@ -1359,7 +1370,8 @@ cast call 0xDeployedAddress "totalSupply()(uint256)" --rpc-url $ANVIL_RPC
 
 # Anvil special RPC methods untuk manipulation:
 cast rpc anvil_impersonateAccount 0xVitalikAddress --rpc-url $ANVIL_RPC
-cast rpc anvil_setBalance 0xAddress 100000000000000000000 --rpc-url $ANVIL_RPC  # Set balance 100 ETH
+# Set balance 100 ETH
+cast rpc anvil_setBalance 0xAddress 100000000000000000000 --rpc-url $ANVIL_RPC
 cast rpc anvil_mine 10 --rpc-url $ANVIL_RPC  # Mine 10 blocks sekaligus
 cast rpc evm_snapshot --rpc-url $ANVIL_RPC       # Snapshot state → mengembalikan id, misal "0x0"
 cast rpc evm_revert 0x0 --rpc-url $ANVIL_RPC     # Revert ke snapshot dengan id tersebut
@@ -1489,6 +1501,8 @@ uint256 optionalVar = vm.envOr("OPTIONAL_VAR", uint256(42)); // Dengan default v
 ## Multi-Network Deployment Pattern
 
 ```solidity
+// ℹ️ Template — isi address WETH tiap network (`0x...`) dan definisikan `MockWETH`/`MyProtocol`
+// sebelum di-compile.
 // script/Deploy.s.sol — Script yang bisa jalan di network manapun
 contract Deploy is Script {
     // Addresses berbeda per network
@@ -1597,7 +1611,7 @@ forge init lab --no-git
 cd lab
 
 # 2. Install dependencies
-forge install OpenZeppelin/openzeppelin-contracts --no-git
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
 
 # 3. Konfigurasi foundry.toml
 cat > foundry.toml << 'EOF'
@@ -1768,6 +1782,19 @@ contract BrokenVault {
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `forge: command not found` | `~/.foundry/bin` belum di PATH | Lihat bagian TROUBLESHOOTING instalasi di C1 |
+| `forge create` tidak men-deploy apa pun | Foundry 1.x: tanpa `--broadcast` hanya simulasi | Tambahkan `--broadcast` |
+| `invalid type: found string ... expected struct EtherscanConfig` | Format `[etherscan]` lama | `sepolia = { key = "${ETHERSCAN_API_KEY}" }` |
+| `environment variable "PRIVATE_KEY" not found` | `.env` belum dimuat | `source .env` atau ekspor variabel sebelum `forge script` |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -1801,6 +1828,24 @@ git commit -m "chore: add initial gas snapshot baseline"
 9. Jelaskan perbedaan antara `vm.store()` dan memanggil fungsi setter biasa untuk setup test state. Kapan `vm.store()` lebih berguna?
 10. Apa itu gas snapshot dan mengapa penting dalam CI/CD pipeline untuk smart contract development?
 
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. Hardhat: ekosistem JS/TS dan plugin (Hardhat 3 juga mendukung test Solidity). Foundry: toolchain berbasis Rust, test ditulis dalam Solidity, sangat cepat, dengan fuzz/invariant testing dan cheatcodes bawaan, plus `cast`/`anvil`. Dipilih karena kecepatan, fuzzing bawaan, satu bahasa, dan lazim di industri audit.
+2. `vm.prank` hanya berlaku untuk **satu** call berikutnya; `vm.startPrank` berlaku untuk semua call sampai `vm.stopPrank`. Gunakan `prank` untuk satu aksi, `startPrank` untuk rangkaian aksi oleh aktor yang sama.
+3. `vm.warp` mengatur `block.timestamp` (uji deadline, vesting, timelock). `vm.roll` mengatur `block.number` (uji logika berbasis nomor block, misal snapshot voting atau delay dalam block).
+4. Sebelum call: `vm.expectRevert(abi.encodeWithSelector(MyContract.MyError.selector, arg1, arg2));` — revert dengan argumen berbeda akan membuat test gagal.
+5. Test dijalankan terhadap salinan state mainnet pada block tertentu. Keuntungannya: berinteraksi dengan contract & token asli beserta perilaku anehnya (decimals, tanpa return bool, blacklist), bukan asumsi di dalam mock.
+6. Mengharapkan event berikutnya cocok: parameter 1–3 = cek topic1/topic2/topic3 (argumen `indexed`), parameter 4 = cek data (argumen non-indexed). Topic0 (signature event) selalu dicek. Setelahnya `emit` event yang diharapkan, lalu lakukan call.
+7. `forge test` menjalankan contract test di EVM lokal dengan cheatcodes, tanpa pernah mengirim transaksi. `forge script` menjalankan script deployment/interaksi — mensimulasikan, dan dengan `--broadcast` mengirim transaksi sungguhan.
+8. `.env` berisi private key & API key. Begitu ter-push ke repo publik, bot memindainya dalam hitungan menit dan menguras dana. Key itu harus dianggap bocor selamanya (tetap ada di riwayat git) — pindahkan dana dan ganti key.
+9. `vm.store` menulis slot mentah, melewati semua logika & validasi — cepat untuk mencapai state yang sulit dibuat (misal di fork) tetapi bisa merusak invariant (misal `totalSupply` tidak ikut berubah). Setter melewati logika contract sehingga state tetap konsisten.
+10. Rekaman gas per test (`.gas-snapshot`). Di CI, `forge snapshot --check`/`--diff` mendeteksi regresi gas pada setiap perubahan sebelum di-merge.
+
+</details>
+
 ---
 
 ## 📊 Progress Tracker
@@ -1825,7 +1870,7 @@ git commit -m "chore: add initial gas snapshot baseline"
 
 ### Wajib Baca
 - [Foundry Book (Dokumentasi Resmi)](https://book.getfoundry.sh/) ← **Baca ini secara menyeluruh**
-- [forge-std Cheatcodes Reference](https://github.com/foundry-rs/forge-std/blob/master/src/Vm.sol)
+- [forge-std Cheatcodes Reference](https://github.com/foundry-rs/forge-std/blob/v1.17.0/src/Vm.sol)
 - [Foundry Cheatcodes Reference](https://book.getfoundry.sh/cheatcodes/)
 
 ### Tools
@@ -1835,7 +1880,7 @@ git commit -m "chore: add initial gas snapshot baseline"
 
 ### Contoh Project di GitHub (Baca source code-nya!)
 - [Foundry Template by PaulRBerg](https://github.com/PaulRBerg/foundry-template) — Best practice template
-- [OpenZeppelin Contracts Tests](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/master/test) — Cara OZ menulis test
+- [OpenZeppelin Contracts Tests](https://github.com/OpenZeppelin/openzeppelin-contracts/tree/v5.6.1/test) — Cara OZ menulis test
 
 ---
 

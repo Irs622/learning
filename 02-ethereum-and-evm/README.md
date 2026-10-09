@@ -4,6 +4,7 @@
 > **Phase**: 2 of 13
 > **Estimated Time**: 🚀 Intensif 7–10 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 3–4 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [01-blockchain-fundamentals](../01-blockchain-fundamentals/README.md) ✅
+> **Status verifikasi**: **Reviewed** · 9 Okt 2026 · teks direview penuh; 7/7 snippet contract compile — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -12,11 +13,11 @@
 Setelah menyelesaikan fase ini, Anda akan mampu:
 
 - Menjelaskan Ethereum sebagai **World Computer** dan apa artinya secara teknis.
-- Memahami perbedaan fundamental **EOA** vs **Contract Account** dan implikasinya terhadap arsitektur DApp.
+- **Membedakan** EOA dan Contract Account secara programatik (`eth_getCode`) dan menjelaskan mengapa contract tidak bisa memulai transaksi.
 - Menjelaskan arsitektur internal **EVM**: Stack, Memory, Storage, Calldata, dan bagaimana bytecode dieksekusi.
-- Memahami **storage slot layout** dan mengapa ini krusial untuk keamanan smart contract.
+- **Menghitung** slot storage untuk variabel, struct yang di-pack, mapping, dan dynamic array — lalu memverifikasinya dengan `cast storage`/`cast index`.
 - Menghitung biaya gas secara manual dari opcode primitif.
-- Memahami **ABI (Application Binary Interface)** dan bagaimana frontend berkomunikasi dengan smart contract.
+- **Meng-encode** calldata secara manual (selector + argumen ABI) dan mencocokkannya dengan `cast calldata`.
 
 ---
 
@@ -200,7 +201,7 @@ function processAllUsers() external {
 <details>
 <summary>💡 Pembahasan</summary>
 
-**a)** Transaksi akan **revert dengan `out of gas`**. Looping 1 juta iterasi di EVM akan mengkonsumsi gas yang jauh melampaui `gasLimit` per block (puluhan juta gas — misal 36 juta gas cukup untuk ~1.700 transfer ETH biasa). Pengirim transaksi kehilangan gas yang sudah dibayarkan, dan tidak ada satu pun user yang ter-process.
+**a)** Transaksi akan **revert dengan `out of gas`**. Looping 1 juta iterasi di EVM akan mengkonsumsi gas yang jauh melampaui `gasLimit` per block (60 juta gas per Okt 2026 — cukup untuk ~2.850 transfer ETH biasa). Pengirim transaksi kehilangan gas yang sudah dibayarkan, dan tidak ada satu pun user yang ter-process.
 
 **b)** Di Laravel, server Anda punya CPU dan RAM tanpa batas (secara praktis). Di Solidity, setiap opcode dikuantifikasi dengan tepat dan dibatasi oleh gasLimit block. Selain itu, ukuran array `users` bisa saja dimanipulasi oleh attacker (jika ada fungsi `addUser`) untuk menyebabkan transaksi selalu `out of gas` — ini adalah serangan **DoS (Denial of Service) via gas exhaustion**.
 
@@ -623,6 +624,8 @@ function process(uint256[] memory data) external { ... }
 // ✅ Efisien: baca langsung dari calldata tanpa menyalin
 function process(uint256[] calldata data) external { ... }
 ```
+
+> ⚠️ **Biaya calldata transaksi (bukan biaya membaca calldata di dalam EVM):** 4 gas per byte nol dan 16 gas per byte non-nol. Sejak Pectra (Mei 2025), **EIP-7623** menambahkan *lantai* untuk transaksi yang didominasi data: total gas minimal `10 × (byte_nol + 4 × byte_non_nol)` — efektif 10/40 gas per byte. Transaksi biasa hampir tidak terpengaruh; yang terdampak adalah transaksi yang mengirim data besar (misal rollup yang masih memakai calldata alih-alih blob — Phase 12).
 
 **Kapan pakai `calldata` vs `memory`?**:
 - `calldata`: Untuk **parameter fungsi `external`** — data hanya perlu dibaca, tidak dimodifikasi. Selalu lebih murah.
@@ -1448,6 +1451,18 @@ File `reverse-engineering-report.md` berisi:
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `cast storage` selalu `0x0` | Slot salah, atau contract adalah proxy (data ada di slot berbeda) | Cek layout dengan `forge inspect <C> storage-layout`; untuk proxy baca slot EIP-1967 |
+| Slot mapping tidak cocok dengan `cast index` | Memakai SHA3-256, atau key/slot tidak di-pad 32 byte | Gunakan Keccak-256 dan `abi.encode(key, slot)` |
+| Biaya gas hasil hitungan berbeda dari Etherscan | Lupa tambahan cold access (+2.100) atau refund | Lihat tabel biaya SSTORE di C3 dan trace `forge test -vvvv` |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -1481,6 +1496,24 @@ git commit -m "feat: add smart contract reverse engineering report (Phase 2 chal
 8. Apa itu `eth_call` vs `eth_sendTransaction`? Kapan masing-masing digunakan?
 9. Fungsi dengan `view` modifier dieksekusi di mana (oleh siapa), dan apakah memerlukan gas?
 10. Jelaskan mengapa events tidak bisa dibaca oleh smart contract lain, dan apa implikasinya terhadap desain arsitektur?
+
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. Secara teori EVM bisa menjalankan komputasi apa pun, tetapi setiap opcode memakan gas, dan gas dibatasi per transaksi & per block. Loop tak berujung pasti berhenti dengan *out of gas*.
+2. Stack (≤1024 item × 32 byte, tempat operasi aritmetika), Memory (byte array sementara per call, biaya ekspansi kuadratik), Storage (key-value persisten 2²⁵⁶ slot, paling mahal), Calldata (input read-only transaksi, paling murah dibaca).
+3. Calldata dibaca langsung tanpa disalin; memory butuh penyalinan dan alokasi. Gunakan `memory` jika data perlu diubah, dibuat di dalam fungsi (misal array hasil), atau dikembalikan setelah dibangun.
+4. Proxy menyimpan storage, implementation hanya kode. Jika versi baru mengubah urutan/tipe variabel, kode baru membaca/menulis slot yang salah → data (misal `owner`, saldo) rusak diam-diam, bahkan bisa membuka pengambilalihan contract.
+5. `uint128 x; uint128 y;` → **1 slot** (di-pack). `uint256 z; uint128 y; uint128 x;` → **2 slot** (z di slot 0, y & x di-pack di slot 1).
+6. Semua node harus mendapatkan hasil identik (determinisme). Respons HTTP bisa berbeda per waktu/node atau tidak tersedia, dan EVM memang tidak punya akses jaringan. Data off-chain dibawa lewat oracle.
+7. EOA (punya private key) bisa menandatangani dan memulai transaksi; contract account hanya berjalan ketika dipanggil dan tidak bisa memulai transaksi sendiri. (EOA yang memakai delegasi EIP-7702 tetap memulai transaksi dengan key-nya.)
+8. `eth_call` mengeksekusi secara lokal di node tanpa membuat transaksi — tidak mengubah state, tanpa biaya; dipakai untuk membaca data dan simulasi. `eth_sendTransaction`/`eth_sendRawTransaction` menyiarkan transaksi bertanda tangan yang mengubah state dan membayar gas.
+9. Jika dipanggil via `eth_call`, fungsi `view` dijalankan oleh node RPC yang Anda tanya dan Anda tidak membayar gas (tetap ada batas gas di node). Jika dipanggil oleh contract lain di dalam transaksi, ia dijalankan semua node sebagai bagian transaksi dan gas-nya dibayar pengirim transaksi.
+10. Log disimpan di receipt, bukan di state, dan EVM tidak punya opcode untuk membacanya. Data yang dibutuhkan contract harus disimpan di storage; event untuk konsumen off-chain (frontend, indexer).
+
+</details>
 
 ---
 

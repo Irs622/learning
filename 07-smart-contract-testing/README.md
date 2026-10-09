@@ -4,6 +4,7 @@
 > **Phase**: 7 of 13
 > **Estimated Time**: 🚀 Intensif 10–14 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 4–5 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [05-smart-contract-development](../05-smart-contract-development/README.md) ✅ | [06-foundry-tooling](../06-foundry-tooling/README.md) ✅
+> **Status verifikasi**: **Reviewed (parsial)** · 9 Okt 2026 · challenge BuggyVault & handler di-compile, bug terbukti terdeteksi invariant — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -11,14 +12,14 @@
 
 Setelah menyelesaikan fase ini, Anda akan mampu:
 
-- Memahami mengapa testing smart contract **berbeda secara fundamental** dari testing aplikasi Web2.
+- **Menjelaskan** dengan contoh mengapa jalur kegagalan & serangan harus diuji sama seriusnya dengan happy path di smart contract.
 - Menyusun **test strategy** berlapis: unit → integration → fuzz → invariant → fork.
 - Menulis **unit test** yang menguji kegagalan (revert path) sama seriusnya dengan happy path.
 - Menulis **fuzz test** yang efektif menggunakan `bound()`, `vm.assume()`, dan input yang bermakna.
 - Merancang **invariant test** berbasis *handler* dan *ghost variables* untuk membuktikan kebenaran global protokol.
 - Menjalankan **fork test** terhadap state mainnet (USDC, Uniswap) secara reproducible.
 - Mengukur kualitas test dengan **coverage**, **gas snapshot**, dan **mutation testing**.
-- Mengenal **formal verification** (symbolic execution) sebagai lapisan di atas fuzzing.
+- **Menjalankan** satu properti dengan symbolic execution (Halmos) dan **membandingkan** jaminannya dengan fuzzing.
 
 ---
 
@@ -30,6 +31,8 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 
 ---
 
+> ⚖️ **Etika**: fork test (C5) membaca state mainnet **secara lokal** — tidak ada transaksi yang dikirim ke jaringan. Jangan pernah menjalankan skenario serangan terhadap protokol nyata; lihat aturan lengkap di [Phase 8 — Etika & Batasan Hukum](../08-smart-contract-security/README.md).
+
 ## ⚙️ Setup
 
 ```bash
@@ -37,8 +40,10 @@ cd 07-smart-contract-testing/
 forge init lab --no-git
 cd lab
 
-# Opsional: salin contract dari Phase 5 sebagai "System Under Test"
-cp ../../05-smart-contract-development/src/*.sol src/
+# Opsional: salin contract Phase 5 sebagai "System Under Test".
+# Gunakan implementasi referensi (src/ di Phase 5 berisi STARTER yang belum diisi,
+# kecuali Anda sudah menyelesaikannya — jika sudah, boleh salin milik Anda sendiri):
+cp ../../05-smart-contract-development/solutions/src/*.sol src/
 ```
 
 > ⚠️ Kode fase ini ditempatkan di subfolder **`lab/`**. Jangan `forge init .` di folder fase — folder ini sudah berisi `README.md` materi, dan `forge init --force` akan **menimpanya**. Semua path `src/`, `test/`, `script/`, `audits/` di fase ini relatif terhadap `lab/`. `forge init` sudah memasang `forge-std`; hapus contoh `Counter*.sol` bawaan.
@@ -447,6 +452,7 @@ Jika Foundry memanggil fungsi target secara acak tanpa arahan, sebagian besar ca
 ```
 
 ```solidity
+// ℹ️ Butuh `ERC20Token` dari Phase 5 (`src/ERC20Token.sol`) dan import forge-std.
 // test/invariant/handlers/TokenHandler.sol
 contract TokenHandler is Test {
     ERC20Token public token;
@@ -474,6 +480,7 @@ contract TokenHandler is Test {
 ```
 
 ```solidity
+// ℹ️ Butuh `ERC20Token` (Phase 5) dan `TokenHandler` di atas.
 // test/invariant/TokenInvariant.t.sol
 contract TokenInvariantTest is Test {
     ERC20Token token;
@@ -569,6 +576,7 @@ Mock hanya sebaik asumsi Anda. Token nyata punya perilaku "aneh":
 Fork test menjalankan test Anda di atas **salinan state mainnet** pada block tertentu.
 
 ```solidity
+// ℹ️ Butuh interface `IERC20` dan `MAINNET_RPC_URL`.
 contract USDCForkTest is Test {
     IERC20 constant USDC = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
 
@@ -844,6 +852,18 @@ contract BuggyVault {
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `The fuzz test rejected too many inputs` | `vm.assume` membuang hampir semua input | Ganti dengan `bound()` (C3 Soal 5) |
+| Invariant selalu lulus, bahkan dengan bug | Handler terlalu sering revert / target salah | Cek tabel *calls/reverts* dengan `-vvv`; pastikan `targetContract(address(handler))` |
+| Fork test lambat / `429 Too Many Requests` | Tidak mem-pin block, RPC dibatasi | Pin block number agar respons di-cache; kurangi `runs` untuk fork test |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -876,6 +896,24 @@ git commit -m "docs: add test plan, invariant list and gas snapshot"
 8. Sebutkan tiga perilaku token ERC-20 "non-standar" yang tidak akan tertangkap oleh mock biasa.
 9. Mengapa 100% line coverage tidak menjamin contract aman? Bagaimana mutation testing melengkapinya?
 10. Apa perbedaan jaminan yang diberikan fuzzing dibanding symbolic execution?
+
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. Kode tidak bisa di-patch, aset nyata dipertaruhkan, dan lingkungannya adversarial serta publik. Jalur kegagalan adalah permukaan serangan; di Web2 bug bisa diperbaiki cepat setelah ditemukan.
+2. Tanpa argumen, test lolos untuk revert **apa pun** — termasuk revert karena bug lain — sehingga memberi rasa aman palsu. Dengan selector, test memastikan alasan revert yang tepat.
+3. `bound` untuk rentang numerik (tidak ada run terbuang). `vm.assume` untuk pengecualian diskrit (misal bukan address tertentu). *Too many rejects*: terlalu banyak input dibuang oleh `assume` sehingga fuzzer menyerah dan test gagal.
+4. Fuzz: input acak untuk satu call dari state awal yang sama. Invariant: urutan call acak, sifat global dicek setelah setiap call. Contoh bug yang hanya tertangkap invariant: `transferShares` ke diri sendiri di `BuggyVault` — butuh `deposit` lalu self-transfer.
+5. Handler membungkus fungsi target dengan input yang dibatasi dan aktor yang valid, sehingga fuzzer menghasilkan transisi state yang bermakna (bukan revert terus) dan bisa mencatat ghost variable.
+6. Variabel di handler yang mencatat apa yang seharusnya terjadi (misal total deposit − total withdraw) untuk dibandingkan dengan state contract, contoh: `vault.totalAssets() == ghost_deposited - ghost_withdrawn`.
+7. Agar hasil test reproducible (state mainnet terus berubah) dan respons RPC bisa di-cache sehingga CI cepat & konsisten.
+8. Fee-on-transfer (jumlah diterima < dikirim), rebasing (saldo berubah tanpa transfer), tidak me-return `bool` (USDT), blacklist/pausable (USDC), decimals berbeda, dan approve yang harus di-nol-kan dulu.
+9. Coverage hanya mengukur baris yang dieksekusi, bukan yang diverifikasi (test tanpa assert tetap menaikkan coverage). Mutation testing sengaja mengubah kode dan memastikan test gagal — mengukur kekuatan test.
+10. Fuzzing: probabilistik — hanya sampel input yang dicoba. Symbolic execution: menelusuri semua input untuk setiap jalur (dalam batas loop/depth) — membuktikan properti atau memberi counterexample.
+
+</details>
 
 ---
 

@@ -3,6 +3,7 @@
 > **Level**: 1 — Beginner Conceptual Mastery
 > **Phase**: 1 of 13
 > **Estimated Time**: 🚀 Intensif 5–7 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 2–3 minggu (Core, ~10 jam/minggu)
+> **Status verifikasi**: **Reviewed** · 9 Okt 2026 · teks direview penuh; contoh JS kunci & on-chain diuji — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -14,7 +15,7 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 - Menjelaskan komponen-komponen jaringan blockchain: *nodes*, *peers*, *validators*, *mempool*.
 - Menguraikan secara rinci **anatomi sebuah transaksi** (nonce, gas, payload, signature).
 - Melacak siklus hidup transaksi penuh: dari wallet → RPC → mempool → validator → block → finality.
-- Memahami implikasi teknis dari **Blockchain Trilemma** terhadap keputusan arsitektur.
+- Memilih jaringan (L1, L2, atau permissioned chain) untuk sebuah use case dan **menjustifikasinya** dengan trade-off **Blockchain Trilemma**.
 
 ---
 
@@ -371,8 +372,8 @@ BLOCK #21,500,000
 │                             semua tx di blok ini)        │
 │   transactionsRoot: 0x4b2... (merkle root semua tx)      │
 │   timestamp:     1735000012                              │
-│   gasLimit:      36,000,000+ (dinaikkan bertahap; cek    │
-│                  nilai terkini di Etherscan)             │
+│   gasLimit:      60,000,000  (per Okt 2026; dinaikkan    │
+│                  bertahap — cek nilai terkini)           │
 │   gasUsed:       18,432,000                              │
 │   proposer:      0xValidator...                          │
 ├───────────────────────────────────────────────────────────┤
@@ -897,7 +898,7 @@ Timeline: ~2 epochs = ~12-15 menit untuk finality
 ```
 
 Setelah block Finalized:
-- Untuk me-revert block ini, harus ada konflik finalisasi yang membutuhkan **>1/3 dari seluruh staked ETH** ikut melanggar aturan — dengan ~34 juta ETH ter-stake, itu **>11 juta ETH** (puluhan miliar dolar)
+- Untuk me-revert block ini, harus ada konflik finalisasi yang membutuhkan **>1/3 dari seluruh staked ETH** ikut melanggar aturan — dengan total stake puluhan juta ETH, itu berarti **jutaan ETH** yang dipertaruhkan (cek angka terkini di [beaconcha.in](https://beaconcha.in/))
 - DAN validator yang melanggar akan di-slash; karena *correlation penalty*, pelanggaran massal seperti ini menghanguskan **sebagian besar hingga seluruh** stake mereka
 - Biaya serangan: jauh lebih besar dari keuntungan yang mungkin didapat
 
@@ -917,11 +918,15 @@ Vitalik Buterin (pendiri Ethereum) merumuskan bahwa sangat sulit untuk memiliki 
 
 | Pilihan | Decentralization | Security | Scalability |
 |---|:---:|:---:|:---:|
-| **Bitcoin** | ✅ Tinggi | ✅ Tinggi | ❌ ~7 TPS |
-| **Ethereum L1** | ✅ Tinggi | ✅ Tinggi | ❌ ~15 TPS |
-| **Solana** | ⚠️ Sedang | ⚠️ Sedang | ✅ ~65,000 TPS (teoretis; aktual ribuan) |
+| **Bitcoin** | ✅ Tinggi | ✅ Tinggi | ❌ ~7 TPS (batas teoretis yang sering dikutip) |
+| **Ethereum L1** | ✅ Tinggi | ✅ Tinggi | ❌ ~9 TPS aktual* |
+| **Solana** | ⚠️ Sedang | ⚠️ Sedang | ✅ Ribuan TPS aktual (klaim teoretis ~65.000) |
 | **Private Blockchain** | ❌ Rendah | ⚠️ Sedang | ✅ Tinggi |
 | **Ethereum L2 (Optimism/Base)** | ⚠️ Sedang (sequencer masih terpusat) | ✅ Mewarisi L1 (tergantung *stage*, Phase 12) | ✅ Ribuan TPS |
+
+\* *Cara membaca angka TPS:* **TPS aktual** = jumlah transaksi ÷ waktu pada periode tertentu; **TPS teoretis** = kapasitas maksimum untuk jenis transaksi paling sederhana. Angka Ethereum di atas diukur pada 9 Okt 2026 dari 50 block mainnet (5.263 transaksi / 600 detik ≈ 8,8 TPS); batas teoretis transfer ETH murni pada gas limit 60 juta ≈ 60.000.000 ÷ 21.000 ÷ 12 detik ≈ **238 TPS**. Transaksi DeFi jauh lebih berat dari transfer biasa, sehingga TPS aktual selalu jauh di bawah batas teoretis. Bandingkan antar-chain hanya dengan metode yang sama (misal [L2BEAT Activity](https://l2beat.com/layer2s/activity)).
+
+> 🧪 **Coba ukur sendiri**: jumlahkan `cast rpc eth_getBlockTransactionCountByNumber` untuk 50 block terakhir, bagi dengan selisih `timestamp` block pertama dan terakhir.
 
 **Kenapa ini penting untuk developer?**
 - Ini menjelaskan kenapa transaksi di Ethereum L1 mahal dan lambat.
@@ -1107,6 +1112,19 @@ Tambahkan estimasi biaya dalam USD (hardcode 1 ETH = $3,500 atau fetch dari Coin
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `Unauthorized: You must authenticate your request with an API key` | Endpoint RPC publik kini butuh API key (misal Ankr) | Pakai `https://ethereum-sepolia-rpc.publicnode.com` atau daftar di chainlist.org |
+| `result: null` untuk hash transaksi | Hash dari jaringan lain (mainnet vs Sepolia) atau salah ketik | Cek hash di Etherscan jaringan yang sama dengan RPC Anda |
+| `TypeError: Cannot mix BigInt and other types` | Mencampur `BigInt` dan `Number` | Gunakan literal `n` (`10n ** 18n`) di semua operasi |
+| `fetch is not defined` | Node.js < 18 | Upgrade ke Node 18+ (`node --version`) |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 Setelah menyelesaikan Soal 1–9 dan Mini Project (minimal Core), commit ke repository:
@@ -1138,6 +1156,24 @@ git commit -m "feat: add transaction flow tracer script (Phase 1 mini project)"
 8. Apa yang dimaksud dengan "Finalized" di Ethereum PoS, dan berapa lama untuk mencapainya?
 9. Bandingkan dua kasus: (a) transaksi dengan `maxFeePerGas` terlalu rendah saat network congested, dan (b) transaksi dengan `gasLimit` terlalu rendah. Mana yang membuang ETH Anda walaupun transaksinya gagal, dan mengapa yang lain tidak?
 10. Seorang backend developer Web2 terbiasa menangani error dengan "retry logic" otomatis. Mengapa pendekatan yang sama di Web3 (retry transaksi yang gagal secara otomatis) sangat berbahaya?
+
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. Web2: data bisa di-`UPDATE`/`DELETE`/rollback oleh pihak yang berwenang (admin/DBA). Web3: state hanya berubah lewat transaksi valid yang tercatat berurutan; riwayat tidak bisa diubah tanpa mengalahkan konsensus (reorg), dan block yang sudah *finalized* praktis tidak bisa diubah.
+2. Transaksi disebarkan lewat gossip P2P ke banyak node agar validator mana pun bisa memasukkannya ke block. Implikasinya: siapa pun bisa melihat transaksi sebelum dieksekusi → front-running, sandwich, MEV; mitigasi umum adalah slippage ketat dan private RPC.
+3. (1) `to` = EOA, `data` kosong → transfer ETH. (2) `to` = contract, `data` berisi selector + argumen → pemanggilan fungsi contract (data kosong ke contract memicu `receive`/`fallback`). (3) `to` kosong/`null`, `data` = init code → deployment contract baru.
+4. Nonce adalah penghitung transaksi per pengirim: menjamin urutan dan mencegah replay. Jika dua transaksi memakai nonce sama, hanya satu yang bisa masuk block; yang lain menjadi tidak valid. Node umumnya hanya mengganti transaksi di mempool jika fee yang baru cukup lebih tinggi (~10%).
+5. `gasLimit` = batas maksimum yang Anda izinkan; `gasUsed` = yang benar-benar terpakai. `gasUsed` tidak pernah melebihi `gasLimit`: jika eksekusi butuh lebih, terjadi *out of gas* → semua perubahan state di-revert, gas sebesar `gasLimit` tetap dibayar, dan nonce tetap naik.
+6. ETH yang di-stake validator (*cryptoeconomic security*). Validator yang curang (misal double vote) di-slash; menyerang finality membutuhkan >1/3 total stake yang akan hangus.
+7. Eksekusi dipindah ke L2 (murah & cepat), sementara data dan bukti di-posting ke L1 sehingga keamanan & desentralisasi diwarisi dari L1. Trade-off yang tersisa: sequencer masih terpusat dan tingkat kematangan proof system berbeda-beda.
+8. Block yang berada di/sebelum checkpoint yang sudah di-*justify* oleh >2/3 stake dan diikuti checkpoint berikutnya yang juga di-*justify*. Me-revert-nya membutuhkan setidaknya 1/3 stake di-slash. Waktunya ~2 epoch ≈ 12,8 menit.
+9. (a) `maxFeePerGas` < baseFee: transaksi tidak bisa masuk block, hanya menunggu di mempool → **tidak ada ETH terpakai** (bisa di-replace atau akhirnya di-drop). (b) `gasLimit` terlalu rendah: transaksi masuk block, kehabisan gas, di-revert → **fee tetap dibayar**. Jadi yang membuang ETH adalah (b).
+10. Kegagalan di sisi klien (timeout RPC) tidak berarti transaksi gagal di chain — retry bisa menggandakan pembayaran. Transaksi yang revert karena logika juga akan revert lagi dan membakar gas setiap kali. Yang benar: cek receipt/state dulu, gunakan nonce yang sama untuk *replacement*, dan rancang aksi agar idempotent.
+
+</details>
 
 ---
 

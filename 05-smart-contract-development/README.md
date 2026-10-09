@@ -4,6 +4,7 @@
 > **Phase**: 5 of 13
 > **Estimated Time**: 🚀 Intensif 14–21 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 5–8 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [04-solidity-fundamentals](../04-solidity-fundamentals/README.md) ✅ | [06-foundry-tooling](../06-foundry-tooling/README.md) ✅
+> **Status verifikasi**: **Tested** · 9 Okt 2026 · build, format, 97 test referensi, 19 test jawaban, simulasi deploy lulus — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -37,11 +38,11 @@ Folder ini **sudah berisi** `foundry.toml`, `src/`, `test/`, dan `script/`. Jang
 cd 05-smart-contract-development/
 
 # 1. Install forge-std (wajib — semua test & script import "forge-std/...")
-forge install foundry-rs/forge-std --no-git
+forge install foundry-rs/forge-std@v1.17.0 --no-git
 
 # 2. Install OpenZeppelin (opsional di fase ini — dipakai sebagai PEMBANDING,
 #    bukan dependency, karena ERC-20/721 di fase ini ditulis dari nol)
-forge install OpenZeppelin/openzeppelin-contracts --no-git
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
 
 # 3. Cek remappings yang terdeteksi otomatis
 forge remappings
@@ -329,6 +330,8 @@ contract SimpleStorage {
 ---
 
 ## Test Suite
+
+> Blok di bawah adalah **contoh ringkas** untuk dibaca. Spesifikasi yang harus Anda loloskan adalah file `test/SimpleStorage.t.sol` (11 test, sebagian dengan nama berbeda).
 
 ```solidity
 // test/SimpleStorage.t.sol
@@ -882,7 +885,7 @@ contract VotingSystem {
 
 ## Test Suite (Partial — Lengkapi sendiri!)
 
-> File `test/VotingSystem.t.sol` berisi test yang sama dengan blok di bawah, **tanpa** test pada daftar TODO. Tulis test TODO tersebut di file itu. Referensi jawaban: `solutions/test/VotingSystem.t.sol` (lihat [`solutions/README.md`](solutions/README.md)) — buka hanya setelah test Anda lulus.
+> Blok di bawah adalah **contoh ringkas** untuk dibaca. File `test/VotingSystem.t.sol` berisi suite yang **lebih lengkap** (14 test, sebagian dengan nama berbeda) — itulah spesifikasi yang harus Anda loloskan — **tanpa** test pada daftar TODO. Tulis test TODO tersebut di file itu. Referensi jawaban: `solutions/test/VotingSystem.t.sol` (lihat [`solutions/README.md`](solutions/README.md)) — buka hanya setelah test Anda lulus.
 
 ```solidity
 // test/VotingSystem.t.sol
@@ -1557,6 +1560,8 @@ Dana tidak hilang, tetapi `refund()` dan `withdraw()` dilindungi modifier `isFin
 
 # Contract 4: ERC-20 Token (From Scratch)
 
+> 🛑 **Untuk belajar, bukan untuk produksi.** Contract ini ditulis dari nol agar Anda memahami cara kerja standar secara mendalam. Untuk token yang akan memegang nilai nyata, gunakan implementasi yang sudah diaudit dan dipakai luas seperti [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts/5.x/) (`ERC20`, `ERC721`, `ERC2981`), lalu audit integrasinya. Setelah Anda menyelesaikan bagian ini, bandingkan implementasi Anda dengan kode OpenZeppelin v5.6.1 di `lib/openzeppelin-contracts/` dan catat minimal 3 perbedaan di **🗒️ Notes**.
+
 ## Objective
 Implement ERC-20 standard **dari nol** sesuai [EIP-20](https://eips.ethereum.org/EIPS/eip-20). Ini adalah cara terbaik untuk benar-benar memahami bagaimana token bekerja.
 
@@ -1932,6 +1937,8 @@ Bahkan jika Bob front-run dan spend dulu:
 
 # Contract 5: NFT Collection (ERC-721)
 
+> 🛑 **Untuk belajar, bukan untuk produksi.** Contract ini ditulis dari nol agar Anda memahami cara kerja standar secara mendalam. Untuk token yang akan memegang nilai nyata, gunakan implementasi yang sudah diaudit dan dipakai luas seperti [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts/5.x/) (`ERC20`, `ERC721`, `ERC2981`), lalu audit integrasinya. Setelah Anda menyelesaikan bagian ini, bandingkan implementasi Anda dengan kode OpenZeppelin v5.6.1 di `lib/openzeppelin-contracts/` dan catat minimal 3 perbedaan di **🗒️ Notes**.
+
 ## Objective
 Implementasi NFT collection dengan minting phases, metadata on-chain dan off-chain, royalties (EIP-2981), dan reveal mechanism.
 
@@ -2034,7 +2041,8 @@ contract NFTCollection {
     mapping(uint256 => address) private _owners;         // tokenId → owner
     mapping(address => uint256) private _balances;        // owner → count
     mapping(uint256 => address) private _tokenApprovals;  // tokenId → approved address
-    mapping(address => mapping(address => bool)) private _operatorApprovals; // owner → operator → approved
+    // owner → operator → approved
+    mapping(address => mapping(address => bool)) private _operatorApprovals;
 
     // Collection specific
     mapping(address => uint256) public mintedPerWallet;   // wallet → amount minted
@@ -2600,14 +2608,27 @@ Buat `deployments/sepolia.md` (atau `.json`) berisi: nama contract, address, tx 
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `[FAIL: NotImplemented()] setUp()` di semua test ERC-20 | `_mint` dipanggil constructor tetapi belum diisi | Implementasikan `_mint` lebih dulu |
+| `Source "forge-std/Test.sol" not found` | Dependencies belum di-install | Jalankan langkah Setup (`forge install foundry-rs/forge-std@v1.17.0 --no-git`) |
+| Ratusan *warning* saat build | Starter masih berupa kerangka (parameter belum dipakai) | Normal — warning hilang setelah fungsi diimplementasikan |
+| Test gagal dan tidak tahu kenapa | Perilaku berbeda dari spesifikasi | `forge test --match-test <nama> -vvvv`, lalu bandingkan dengan `FOUNDRY_PROFILE=solutions forge test --match-test <nama> -vvvv` |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
 cd 05-smart-contract-development/
 
 # Setup dependencies (lihat ⚙️ Setup — jangan forge init di folder ini)
-forge install foundry-rs/forge-std --no-git
-forge install OpenZeppelin/openzeppelin-contracts --no-git
+forge install foundry-rs/forge-std@v1.17.0 --no-git
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
 
 # Setelah implement semua contract dan test:
 
@@ -2642,6 +2663,26 @@ git commit -m "deploy: deploy all contracts to Sepolia testnet"
 11. Mengapa `immutable` digunakan untuk `CREATOR`, `GOAL`, dan `DEADLINE` di Crowdfunding? Apa benefit-nya?
 12. Seorang user minta Anda menambahkan "emergency pause" pada VotingSystem. Bagaimana Anda mengimplementasikannya tanpa melanggar decentralization principle?
 
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. Fungsi `external`/`public` tidak bisa mengembalikan referensi `storage` — data dikembalikan sebagai salinan `memory` (ABI-encoded). Return `storage` hanya untuk fungsi `internal`/`private`, berguna untuk mendapat pointer yang bisa dimodifikasi.
+2. `delete` pada dynamic array meng-nol-kan setiap elemen (satu SSTORE per slot) → biaya O(n) yang bisa melampaui block gas limit. Alternatif: "virtual reset" dengan indeks awal (Soal 1), mapping ber-versi, atau penghapusan bertahap.
+3. `exists` membedakan "proposal belum pernah dibuat" dari "proposal ada" secara eksplisit. Mengandalkan `deadline == 0` mencampur dua makna dalam satu field dan rapuh jika aturan durasi berubah.
+4. Lihat pola `withdrawVulnerable` vs `withdrawSafe` di Phase 4 C5: jika saldo baru di-nol-kan setelah `call`, `receive()` attacker bisa memanggil `withdraw()` lagi dan menguras contract. Meng-nol-kan saldo sebelum `call` menutup celah itu.
+5. Mengikuti CEI: semua pengecekan (allowance & saldo) dilakukan sebelum state berubah, sehingga kegagalan terjadi dengan error yang tepat dan tidak ada perubahan setengah jalan.
+6. Approve sebesar `type(uint256).max` sekali saja agar tidak perlu approve lagi (UX & hemat gas). Risikonya: jika spender di-exploit atau jahat, seluruh token Anda — sekarang dan nanti — bisa diambil. Mitigasi: approve sejumlah yang dibutuhkan, rutin revoke, atau permit dengan kedaluwarsa.
+7. `safeTransferFrom` memeriksa penerima: jika contract, ia harus mengimplementasikan `onERC721Received` dan mengembalikan selector yang benar. Dengan `transferFrom` ke contract yang tidak bisa mengelola NFT, NFT terkunci selamanya.
+8. `supportsInterface(interfaceId)` memberi tahu standar apa yang didukung (ERC-721, Metadata, ERC-2981, dll). Marketplace memakainya untuk mendeteksi jenis token, metadata, dan royalti secara otomatis.
+9. Standar untuk *menanyakan* info royalti (penerima & jumlah) untuk harga jual tertentu. Royalti **tidak** dipaksakan on-chain — marketplace yang memilih menghormatinya. Memaksanya butuh pembatasan transfer dengan trade-off sendiri.
+10. Dana tetap aman di contract, tetapi `refund()` dan `withdraw()` menunggu status final. Karena `finalize()` bisa dipanggil siapa saja setelah deadline, donor yang ingin refund cukup memanggilnya sendiri.
+11. Nilainya diset sekali di constructor dan tidak bisa diubah — jaminan bagi donor bahwa aturan main tetap. Juga lebih murah dibaca karena tertanam di bytecode (tanpa SLOAD).
+12. Batasi kekuasaannya: pause dipegang multisig/timelock atau governance, hanya menghentikan aksi baru (misal pembuatan proposal/vote) tanpa bisa mengubah suara yang ada, dibatasi waktu (auto-unpause), dan setiap pemakaian di-emit sebagai event yang transparan.
+
+</details>
+
 ---
 
 ## 📊 Progress Tracker
@@ -2671,14 +2712,14 @@ git commit -m "deploy: deploy all contracts to Sepolia testnet"
 - [EIP-2612: Permit Extension (Gasless Approval)](https://eips.ethereum.org/EIPS/eip-2612)
 
 ### Reference Implementations
-- [OpenZeppelin ERC20 Source](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
-- [OpenZeppelin ERC721 Source](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol)
+- [OpenZeppelin ERC20 Source](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.6.1/contracts/token/ERC20/ERC20.sol)
+- [OpenZeppelin ERC721 Source](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.6.1/contracts/token/ERC721/ERC721.sol)
 - [Solmate (Ultra gas-efficient implementations)](https://github.com/transmissions11/solmate)
 
 ### Security
 - [SWC-107: Reentrancy](https://swcregistry.io/docs/SWC-107) *(SWC Registry tidak lagi diperbarui sejak 2020 — tetap berguna sebagai klasifikasi dasar)*
 - [SWC-114: Transaction Order Dependence (Race Condition)](https://swcregistry.io/docs/SWC-114)
-- [Consensys Best Practices: Known Attacks](https://consensys.github.io/smart-contract-best-practices/attacks/)
+- [Consensys Best Practices: Known Attacks](https://consensysdiligence.github.io/smart-contract-best-practices/attacks/)
 
 ---
 

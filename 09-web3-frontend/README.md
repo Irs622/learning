@@ -4,6 +4,7 @@
 > **Phase**: 9 of 13
 > **Estimated Time**: 🚀 Intensif 14–21 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 5–8 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [05-smart-contract-development](../05-smart-contract-development/README.md) ✅ | [08-smart-contract-security](../08-smart-contract-security/README.md) ✅
+> **Status verifikasi**: **Reviewed (parsial)** · 9 Okt 2026 · snippet utama lolos tsc dengan versi di-pin; belum `next build` — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -39,8 +40,17 @@ cd 09-web3-frontend/
 npx create-next-app@latest dapp --typescript --app --eslint --src-dir
 
 cd dapp
-npm install viem wagmi @tanstack/react-query @rainbow-me/rainbowkit
+# Versi DI-PIN — kombinasi yang diverifikasi kompatibel (lihat catatan di bawah)
+npm install viem@2 wagmi@2 @tanstack/react-query@5 @rainbow-me/rainbowkit@2
 ```
+
+> 📌 **Mengapa di-pin ke wagmi v2?** Per Oktober 2026, **wagmi v3** sudah rilis, tetapi **RainbowKit 2.x masih mensyaratkan `wagmi ^2.9.0`**. Tanpa pin, `npm install wagmi` memasang v3 dan npm hanya memberi peringatan `ERESOLVE overriding peer dependency` — instalasi "berhasil" padahal kombinasinya tidak didukung.
+>
+> - Hooks di fase ini ditulis untuk API v2. Di v3, `useAccount` masih tersedia sebagai alias `useConnection` dan `writeContract` masih ada tetapi `@deprecated` (diganti `mutate`). Lihat [panduan migrasi v2 → v3](https://wagmi.sh/react/guides/migrate-from-v2-to-v3).
+> - Jika Anda tidak memakai RainbowKit, Anda boleh memakai wagmi v3 — pasang konektor yang dibutuhkan secara terpisah (di v3 semuanya *optional peer dependency*).
+> - `npm audit` pada kombinasi ini melaporkan beberapa kerentanan *moderate* dari dependensi transitif (WalletConnect/MetaMask SDK). Untuk proyek belajar di localhost risikonya rendah; untuk produksi, audit ulang dan perbarui dependensi.
+>
+> ✅ *Diverifikasi 9 Okt 2026: contoh `providers.tsx`, `DonateCard`, ABI, dan `toUserMessage` di fase ini lolos `tsc --noEmit` (strict) dengan wagmi 2.x, viem 2.x, RainbowKit 2.x, TanStack Query 5.x, React 18, TypeScript 5. Belum diuji dengan `next build` penuh.*
 
 Environment (`.env.local` — **jangan commit**):
 
@@ -653,6 +663,19 @@ SECURITY:
 - [ ] Signature yang sama tidak bisa dipakai dua kali (nonce bertambah)
 - [ ] *(Extended)* Key relayer tidak muncul di bundle client (`grep` di `.next/static` kosong)
 
+
+---
+
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `Hydration failed` / teks berbeda server vs client | Data wallet dirender saat SSR | `ssr: true` di config wagmi; render info akun hanya setelah komponen ter-mount |
+| `npm warn ERESOLVE ... peer wagmi` | wagmi v3 terpasang bersama RainbowKit 2.x | Pakai perintah install yang di-pin (`wagmi@2`) |
+| `Do not know how to serialize a BigInt` | `JSON.stringify` pada `bigint` | Ubah ke string (`value.toString()`) sebelum serialisasi |
+| Transaksi terkirim ke jaringan yang salah | Wallet di chain berbeda | Cek `chainId` dari `useAccount`, tampilkan tombol switch chain |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
 
 ---
 

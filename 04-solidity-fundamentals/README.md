@@ -4,6 +4,7 @@
 > **Phase**: 4 of 13
 > **Estimated Time**: 🚀 Intensif 10–14 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 4–5 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [03-cryptography-and-wallets](../03-cryptography-and-wallets/README.md) ✅
+> **Status verifikasi**: **Reviewed** · 9 Okt 2026 · teks direview penuh; snippet utama di-compile — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -12,11 +13,11 @@
 Setelah menyelesaikan fase ini, Anda akan mampu:
 
 - Menulis smart contract Solidity yang terstruktur dengan benar dari nol.
-- Menguasai **type system** Solidity: value types, reference types, dan special types.
-- Memahami dan mengaplikasikan **data locations** (`storage`, `memory`, `calldata`) dengan benar — termasuk implikasi gas dan keamanannya.
+- **Memilih** tipe Solidity yang tepat (value, reference, `constant`/`immutable`) dan **memprediksi** apakah sebuah ekspresi compile, revert, atau berjalan normal.
+- **Menemukan dan memperbaiki** bug data location (`storage` vs `memory` vs `calldata`) serta menjelaskan dampak gas-nya.
 - Menulis **functions** dengan visibility, state mutability, modifiers, dan error handling yang tepat.
 - Menggunakan **events** untuk logging on-chain yang efisien.
-- Memahami pola **inheritance**, **interfaces**, dan **libraries** untuk arsitektur contract yang clean.
+- **Merancang** arsitektur multi-contract dengan **inheritance** (urutan linearisasi yang benar), **interfaces**, dan **libraries**.
 - Membaca dan menulis kode Solidity sambil selalu memikirkan implikasi **gas cost** dan **security**.
 
 ---
@@ -37,6 +38,7 @@ Sebelum mulai, install **Foundry** — modern smart contract development toolkit
 ```bash
 # Install Foundry (Mac/Linux)
 curl -L https://foundry.paradigm.xyz | bash
+# atau pin: foundryup -i v1.7.1 (versi yang dipakai untuk memverifikasi materi)
 foundryup
 
 # Verify installation
@@ -100,6 +102,8 @@ Di Solidity, setiap function adalah "instruksi untuk mengubah state machine" yan
 ## Struktur Lengkap Sebuah Contract
 
 ```solidity
+// ℹ️ Ilustrasi struktur — import `./interfaces/IMyInterface.sol` hanya contoh; tidak
+// dimaksudkan di-compile apa adanya.
 // SPDX-License-Identifier: MIT
 // [1] License declaration — sangat dianjurkan (sejak 0.6.8 compiler memberi WARNING jika tidak ada)
 // Penting untuk open-source compliance & verifikasi di Etherscan.
@@ -343,7 +347,8 @@ uint32  c = 4294967295;   // 0 sampai 2^32-1
 uint64  d = type(uint64).max;
 uint128 e = type(uint128).max;
 uint256 f = type(uint256).max;  // Default "uint"
-// = 115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457,584,007,913,129,639,935
+// =
+// 115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457,584,007,913,129,639,935
 
 // Useful constants:
 uint256 public constant MAX = type(uint256).max; // 2^256 - 1
@@ -380,7 +385,8 @@ int256 priceChange = int256(newPrice) - int256(oldPrice); // bisa negatif
 
 ```solidity
 address           wallet = 0x1234...;  // 20 bytes, bisa receive ETH
-address payable   payableWallet = payable(wallet); // Tipe yang bisa dipanggil .transfer() dan .send()
+// Tipe yang bisa dipanggil .transfer() dan .send()
+address payable   payableWallet = payable(wallet);
 
 // Properties & methods:
 wallet.balance;                           // Wei balance (opcode BALANCE, bukan SLOAD)
@@ -390,8 +396,10 @@ bool ok = payableWallet.send(1 ether);   // Kirim, return false jika gagal
 
 // Type conversions:
 address(this)          // address contract ini sendiri
-address(0)             // zero address (null address — tidak ada yang diketahui memegang private key-nya)
-address(uint160(123))  // konversi dari integer — WAJIB lewat uint160 (address(uint256(x)) = compile error)
+// zero address (null address — tidak ada yang diketahui memegang private key-nya)
+address(0)
+// konversi dari integer — WAJIB lewat uint160 (address(uint256(x)) = compile error)
+address(uint160(123))
 uint256(uint160(addr)) // konversi address ke uint256
 
 // ⚠️ address(0) sering digunakan untuk "burn" token (kirim ke sini = hilang selamanya)
@@ -498,6 +506,7 @@ contract Auction {
 ### Soal 2 — Type Safety & Overflow Analysis
 
 ```solidity
+// ⚠️ SENGAJA mengandung error — bagian dari soal. Tebak dulu, lalu buktikan dengan `forge build`.
 pragma solidity ^0.8.24;
 
 contract TypeExercise {
@@ -835,6 +844,7 @@ contract StorageBug {
 Review kode berikut dan identifikasi semua bug:
 
 ```solidity
+// ⚠️ SENGAJA mengandung bug — bagian dari soal Bug Hunt (salah satunya bahkan compile error).
 contract StudentRegistry {
     struct Student {
         string name;
@@ -886,11 +896,13 @@ contract StudentRegistry {
 <details>
 <summary>💡 Pembahasan</summary>
 
-**Bug 1 — `addGrade`**:
+**Bug 1 — `addGrade`** — ini bahkan **tidak bisa di-compile**:
 ```solidity
-Student memory student = _students[msg.sender]; // COPY ke memory!
-student.grades.push(grade); // Push ke COPY — storage tidak berubah!
+Student memory student = _students[msg.sender]; // COPY ke memory
+student.grades.push(grade);
+// ❌ Error (4994): Member "push" is not available in uint256[] memory outside of storage.
 ```
+Array di `memory` berukuran tetap — `push`/`pop` hanya tersedia untuk array di **storage**. Compiler menyelamatkan Anda di sini. Tetapi akar masalahnya sama dengan Bug 2: `student` adalah **salinan**. Seandainya Anda mengganti `push` dengan sesuatu yang lolos compile (misalnya `student.grades[0] = grade;`), perubahan itu hanya mengenai salinan di memory dan **diam-diam hilang** — persis seperti Bug 2.
 Perbaikan:
 ```solidity
 function addGrade(uint256 grade) external {
@@ -1473,6 +1485,8 @@ Tuliskan deklarasi event Solidity untuk semua fitur di atas.
 ## Inheritance: Membangun di Atas Contract Lain
 
 ```solidity
+// ℹ️ Ilustrasi konsep inheritance — beberapa contract di bawah sengaja tidak lengkap (argumen
+// constructor, isi `/* ... */`).
 // Base contract
 contract Ownable {
     address private _owner;
@@ -1533,7 +1547,8 @@ contract ERC20Pausable is ERC20 {
 
 // Diamond problem diselesaikan oleh C3 linearization.
 // Aturan Solidity: tulis parent dari yang paling "BASE" ke yang paling "DERIVED".
-// ❌ contract MyToken2 is ERC20Pausable, Ownable {}  → Error: Linearization of inheritance graph impossible
+// ❌ contract MyToken2 is ERC20Pausable, Ownable {}  → Error: Linearization of inheritance graph
+// impossible
 // ✅ (ilustrasi — argumen constructor Ownable diabaikan di sini)
 contract MyToken2 is Ownable, ERC20Pausable {
     // Saat ada fungsi yang sama di beberapa parent, `super.method()` mengikuti urutan
@@ -1605,6 +1620,8 @@ contract MyERC20Token is IERC20 {
 ## Libraries: Reusable Function Collections
 
 ```solidity
+// ℹ️ Ilustrasi — memakai `IERC20` dari blok Interfaces di atas; gabungkan keduanya jika ingin
+// meng-compile.
 // Library: kumpulan fungsi stateless yang bisa digunakan oleh contract lain
 // Library tidak punya state, tidak bisa menerima ETH, tidak bisa inherit
 library SafeTransfer {
@@ -1766,7 +1783,8 @@ Contract yang menggabungkan semua konsep C1-C7:
 // Sebuah registry sistem yang mencatat profile developer
 
 // Requirements:
-// - Struct: DeveloperProfile { address wallet, string name, uint8 level, bool verified, uint256 joinedAt }
+// - Struct: DeveloperProfile { address wallet, string name, uint8 level, bool verified, uint256
+// joinedAt }
 // - Enum: Level { Junior, Mid, Senior, Lead }
 // - Mapping: address → DeveloperProfile
 // - Events: Registered, LevelUpdated, Verified
@@ -1858,6 +1876,19 @@ Security Requirements:
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `Cannot run init on a non-empty directory` | `forge init .` di folder fase | Gunakan `forge init lab --no-git` |
+| `Explicit type conversion not allowed from "uint256" to "address"` | Konversi langsung | `address(uint160(x))` |
+| `Data location must be "storage", "memory" or "calldata"` | Parameter/variabel reference type tanpa lokasi | Tambahkan `memory`/`calldata`/`storage` sesuai C3 |
+| `Stack too deep` | Terlalu banyak variabel lokal/parameter | Kelompokkan ke struct, pecah fungsi, atau aktifkan `via_ir = true` |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -1890,6 +1921,24 @@ git commit -m "feat: implement DecentralizedVoting contract (Phase 4 challenge)"
 8. Jelaskan Checks-Effects-Interactions pattern dan mengapa ini penting untuk mencegah reentrancy.
 9. Apa perbedaan `interface` dan `abstract contract` di Solidity? Kapan Anda menggunakan masing-masing?
 10. Sebuah state variable dideklarasikan `uint256 private _secret = 42`. Benarkah nilainya "private" dan tidak bisa dibaca oleh orang lain? Jelaskan.
+
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. `public` bisa dipanggil dari luar dan dari dalam contract; `external` hanya dari luar (dari dalam harus lewat `this.f()`, yang merupakan external call). Pilih `external` untuk fungsi yang memang bagian API eksternal dan tidak dipakai internal — menyatakan intent dengan jelas.
+2. `tx.origin` adalah EOA yang memulai transaksi. Jika korban berinteraksi dengan contract jahat, contract itu bisa memanggil contract Anda dan lolos pengecekan `tx.origin == owner` → phishing. Gunakan `msg.sender`.
+3. `require` — validasi input/kondisi dari luar. `revert` — sama tetapi untuk percabangan kompleks dan custom error. `assert` — invariant internal yang seharusnya mustahil gagal; jika gagal (Panic 0x01) berarti ada bug.
+4. Lebih murah (4 byte selector + argumen, bukan string ABI-encoded; bytecode lebih kecil), bisa membawa parameter terstruktur, dan bisa di-decode frontend menjadi pesan yang jelas.
+5. 3 slot: `a` slot 0, `b` slot 1 (bool sendirian), `c` slot 2. Mengubah urutan saja tidak membantu karena kedua `uint256` selalu memenuhi slot. Penghematan hanya mungkin jika salah satu variabel bisa memakai tipe lebih kecil, misal `uint128 a; bool b;` (di-pack) — asalkan rentang nilainya cukup.
+6. `memory` membuat **salinan**: perubahan tidak tersimpan dan menyalin struct (termasuk array di dalamnya) memakan gas. `storage` adalah **referensi**: perubahan langsung menulis ke storage.
+7. Key tidak disimpan dan semua key "ada" secara virtual dengan nilai default, sehingga tidak ada daftar/length. Solusi: simpan array key + mapping penanda, atau indeks off-chain lewat event.
+8. Checks (validasi) → Effects (ubah state) → Interactions (external call terakhir). External call menyerahkan kontrol ke pihak lain yang bisa memanggil balik; jika state belum diperbarui, ia bisa mengeksploitasi state lama.
+9. `interface`: hanya deklarasi fungsi external & event, tanpa state, constructor, atau implementasi — untuk berinteraksi dengan contract lain/standar. `abstract contract`: boleh punya state, constructor, dan fungsi yang sudah diimplementasikan — untuk logika dasar bersama yang diwarisi.
+10. Tidak. `private` hanya mencegah contract lain mengaksesnya lewat Solidity. Nilainya tetap bisa dibaca siapa pun lewat `eth_getStorageAt` (di sini slot 0). Jangan menyimpan rahasia on-chain.
+
+</details>
 
 ---
 
@@ -1927,11 +1976,11 @@ git commit -m "feat: implement DecentralizedVoting contract (Phase 4 challenge)"
 
 ### Security References
 - [SWC Registry (Smart Contract Weakness Classification)](https://swcregistry.io/) — klasifikasi klasik, **tidak lagi diperbarui sejak 2020**; untuk temuan terkini gunakan [Solodit](https://solodit.xyz/)
-- [Consensys Smart Contract Best Practices](https://consensys.github.io/smart-contract-best-practices/)
+- [Consensys Smart Contract Best Practices](https://consensysdiligence.github.io/smart-contract-best-practices/)
 
 ### Untuk Pemahaman Lebih Dalam
 - [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) — Baca source code-nya, ini adalah Solidity terbaik yang bisa Anda pelajari
-- [Mastering Ethereum: Chapter 7 — Smart Contracts and Solidity](https://github.com/ethereumbook/ethereumbook/blob/develop/07smart-contracts-solidity.asciidoc)
+- [Mastering Ethereum: Chapter 7 — Smart Contracts and Solidity](https://github.com/ethereumbook/ethereumbook/blob/490d19e42e0e5e06184b0298807472756c89cb81/src/chapter_7.md)
 
 ---
 

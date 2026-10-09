@@ -4,6 +4,7 @@
 > **Phase**: 8 of 13
 > **Estimated Time**: 🚀 Intensif 21–30 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 8–11 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [05-smart-contract-development](../05-smart-contract-development/README.md) ✅ | [07-smart-contract-testing](../07-smart-contract-testing/README.md) ✅
+> **Status verifikasi**: **Reviewed (parsial)** · 9 Okt 2026 · LoyaltyRewards & contoh CoinFlip (exploit 5/5) diuji — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -29,17 +30,32 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 
 ---
 
+## ⚖️ Etika & Batasan Hukum (WAJIB DIBACA)
+
+Fase ini mengajarkan cara **menyerang** smart contract agar Anda mampu **mempertahankannya**. Aturan berikut tidak bisa ditawar:
+
+- ✅ Jalankan exploit **hanya** di lingkungan yang Anda kendalikan: `forge test`, `anvil`, atau fork lokal (`--fork-url`). Fork adalah salinan lokal — transaksi di sana tidak menyentuh jaringan asli.
+- ✅ Wargame (Ethernaut, Damn Vulnerable DeFi) dan contest audit (Code4rena, Sherlock, Cantina) adalah tempat legal untuk berlatih.
+- ✅ Jika menemukan kerentanan di protokol nyata: laporkan secara **responsible disclosure** lewat program bug bounty (misal Immunefi) atau kontak keamanan resmi tim tersebut — jangan mengeksploitasinya, jangan mempublikasikannya sebelum diperbaiki.
+- ❌ **Jangan** mengirim transaksi exploit ke mainnet/testnet milik pihak lain, meskipun "hanya untuk membuktikan". Di banyak yurisdiksi (termasuk UU ITE di Indonesia) mengakses atau memanipulasi sistem elektronik tanpa hak adalah tindak pidana, dan dana yang diambil tetap dianggap pencurian.
+- ❌ Jangan menggunakan private key, wallet, atau dana milik orang lain dalam latihan apa pun.
+
+> Seluruh contoh di fase ini memakai contract buatan sendiri dan akun default anvil yang publik.
+
+---
+
 ## ⚙️ Setup
 
 ```bash
 cd 08-smart-contract-security/
 forge init lab --no-git
 cd lab
-forge install OpenZeppelin/openzeppelin-contracts --no-git
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
 
 # Static analysis
 python3 -m pip install slither-analyzer
-cargo install aderyn            # atau: curl -L https://raw.githubusercontent.com/Cyfrin/aderyn/dev/cyfrinup/install | bash
+# (pin: cargo install aderyn --version <x.y.z>) atau: curl -L https://raw.githubusercontent.com/Cyfrin/aderyn/dev/cyfrinup/install | bash
+cargo install aderyn
 ```
 
 > ⚠️ Kode fase ini ditempatkan di subfolder **`lab/`**. Jangan `forge init .` di folder fase — folder ini sudah berisi `README.md` materi, dan `forge init --force` akan **menimpanya**. Semua path `src/`, `test/`, `script/`, `audits/` di fase ini relatif terhadap `lab/`. `forge init` sudah memasang `forge-std`; hapus contoh `Counter*.sol` bawaan.
@@ -69,6 +85,26 @@ Struktur yang disarankan untuk exploit lab:
 | **C6** | [Front-Running, MEV & Signature Replay](#c6-front-running-mev--signature-replay) | ⬜ |
 | **C7** | [Denial of Service & Unexpected Revert](#c7-denial-of-service--unexpected-revert) | ⬜ |
 | **C8** | [Security Tooling & Audit Report](#c8-security-tooling--audit-report) | ⬜ |
+| **C9** | [Insecure Randomness & Input Validation](#c9-insecure-randomness--input-validation) | ⬜ |
+
+### Pemetaan ke OWASP Smart Contract Top 10
+
+[OWASP Smart Contract Top 10](https://owasp.org/www-project-smart-contract-top-10/) adalah daftar risiko yang disusun dari insiden nyata. Gunakan tabel ini untuk memastikan cakupan belajar Anda.
+
+| OWASP 2025 | Dibahas di |
+|---|---|
+| SC01 Access Control | C3 |
+| SC02 Price Oracle Manipulation | C5 |
+| SC03 Logic Errors | C1 (threat model), C8 (manual review), Challenge |
+| SC04 Lack of Input Validation | C9 |
+| SC05 Reentrancy | C2 |
+| SC06 Unchecked External Calls | C7, C9 (+ `SafeERC20` di Phase 7 C5) |
+| SC07 Flash Loan Attacks | C5 |
+| SC08 Integer Overflow/Underflow | C4 |
+| SC09 Insecure Randomness | C9 |
+| SC10 Denial of Service | C7 |
+
+> Per Oktober 2026, OWASP juga menerbitkan daftar **2026** yang bersifat *forward-looking* (masih membuka survei komunitas) di [scs.owasp.org](https://scs.owasp.org/sctop10/). Perubahan pentingnya: *Business Logic* naik ke SC02, *Arithmetic Errors (Rounding & Precision)* menjadi kategori sendiri (→ C4), dan *Proxy & Upgradeability* masuk SC10 (→ C3 & Phase 13 C1). Cek ulang edisi terbaru sebelum mengajarkan peringkatnya.
 
 ---
 
@@ -244,6 +280,8 @@ Korban (owner) ──tx──▶ MaliciousContract.claimAirdrop()
 ## Unprotected Initializer (Pengantar Proxy)
 
 ```solidity
+// ℹ️ Ilustrasi — butuh `import {Initializable} from
+// "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";`
 contract VaultV1 is Initializable {
     address public owner;
     function initialize(address _owner) external initializer {   // ✅ modifier initializer
@@ -610,9 +648,119 @@ Tentukan severity untuk tiga temuan berikut dan jelaskan alasannya: (a) `owner` 
 
 ---
 
+# C9: Insecure Randomness & Input Validation
+
+## Tidak Ada Angka Acak "Gratis" di Blockchain
+
+Semua node harus mendapatkan hasil eksekusi yang **sama persis** (Phase 2 C1). Karena itu tidak ada sumber acak rahasia di dalam EVM. Nilai yang sering disalahgunakan sebagai "acak":
+
+| Sumber | Masalah |
+|---|---|
+| `block.timestamp`, `block.number` | Bisa dibaca siapa pun; contract lain di transaksi yang sama mendapat nilai identik |
+| `block.prevrandao` | Diketahui sebelum transaksi dieksekusi dan bisa dibaca contract penyerang di tx yang sama; proposer punya sedikit pengaruh |
+| `blockhash(block.number - 1)` | Sudah publik saat transaksi Anda dieksekusi |
+| `keccak256(...)` dari nilai di atas | Hash dari input yang bisa ditebak tetap bisa ditebak |
+
+```solidity
+/// ❌ VULNERABLE: "acak" dari data block yang bisa dibaca contract lain di tx yang sama
+contract CoinFlip {
+    error WrongValue();
+
+    function play(bool guess) external payable {
+        if (msg.value != 0.1 ether) revert WrongValue();
+        bool result = uint256(keccak256(abi.encode(block.prevrandao, block.timestamp, msg.sender))) % 2 == 0;
+        if (guess == result) {
+            (bool ok,) = msg.sender.call{value: 0.2 ether}("");
+            require(ok);
+        }
+    }
+
+    receive() external payable {}
+}
+
+/// Attacker menghitung "hasil acak" yang SAMA di dalam transaksi yang sama
+contract CoinFlipAttacker {
+    CoinFlip public immutable target;
+
+    constructor(CoinFlip _target) {
+        target = _target;
+    }
+
+    function attack() external payable {
+        bool predicted = uint256(keccak256(abi.encode(block.prevrandao, block.timestamp, address(this)))) % 2 == 0;
+        target.play{value: 0.1 ether}(predicted);
+    }
+
+    receive() external payable {}
+}
+```
+
+Kuncinya: `CoinFlipAttacker.attack()` menghitung rumus yang sama **di dalam transaksi yang sama**, jadi tebakannya selalu benar. Test `vm.prevrandao` + `vm.warp` membuktikan attacker menang 5 dari 5 kali.
+
+## Mitigasi
+
+| Pendekatan | Cara Kerja | Catatan |
+|---|---|---|
+| **Chainlink VRF** | Angka acak + bukti kriptografis dari oracle, dikirim di transaksi **terpisah** (callback) | Butuh biaya & langganan; hasil tidak bisa dimanipulasi oracle karena ada proof |
+| **Commit-reveal** | Peserta commit `hash(nilai, salt)` dulu, reveal setelah semua commit (Phase 3 Challenge) | Peserta terakhir bisa memilih tidak reveal → perlu deposit/penalti |
+| **Pisahkan aksi & penentuan hasil** | User "mendaftar" di tx 1, hasil ditentukan di tx berikutnya dengan sumber acak yang belum diketahui saat tx 1 | Tetap butuh sumber acak yang baik |
+
+## Input Validation (OWASP SC04)
+
+Banyak exploit besar terjadi bukan karena logika rumit, tetapi karena **parameter tidak divalidasi**:
+
+```solidity
+// ❌ Tanpa validasi
+// 10_000+ bps = 100%+ fee
+function setFee(uint256 newFeeBps) external onlyOwner { feeBps = newFeeBps; }
+function withdrawTo(address to, uint256 amount) external { /* to bisa address(0) */ }
+// pool palsu buatan attacker
+function swap(address pool, ...) external { IPool(pool).swap(...); }
+
+// ✅ Dengan validasi
+error FeeTooHigh(uint256 fee, uint256 max);
+error ZeroAddress();
+error UnknownPool(address pool);
+
+function setFee(uint256 newFeeBps) external onlyOwner {
+    if (newFeeBps > MAX_FEE_BPS) revert FeeTooHigh(newFeeBps, MAX_FEE_BPS);
+    feeBps = newFeeBps;
+}
+```
+
+Checklist validasi:
+- **Batas numerik**: min/max, tidak nol jika nol tidak bermakna, `deadline >= block.timestamp`.
+- **Address**: bukan `address(0)`; jika harus contract terpercaya → whitelist / registry, jangan menerima address sembarang dari user.
+- **Array**: panjang array yang berpasangan sama (`recipients.length == amounts.length`); batasi panjang (Phase 8 C7).
+- **Data dari luar**: return value external call (SC06), harga oracle (C5), signature (C6).
+
+## Latihan C9
+
+### Soal 11 — Exploit Randomness (Hands-On)
+Salin `CoinFlip` & `CoinFlipAttacker` ke `src/vulnerable/`, buat test exploit, lalu buat versi `src/fixed/` dengan **commit-reveal** (pemain commit `keccak256(abi.encode(guess, salt, msg.sender))`, reveal minimal 1 block kemudian, hasil diambil dari `blockhash` block **setelah** commit).
+
+**✅ Selesai jika:**
+- [ ] Test exploit menang 5/5 terhadap versi rentan (bandingkan dengan contoh di atas)
+- [ ] Attacker yang sama **tidak lagi** bisa menang dengan pasti terhadap versi fix (uji minimal 20 putaran dengan `vm.prevrandao` berbeda — tingkat menang mendekati 50%)
+- [ ] Reveal di block yang sama dengan commit → revert
+- [ ] Penjelasan di Notes: mengapa `blockhash` hanya tersedia untuk 256 block terakhir, dan apa akibatnya jika pemain tidak reveal tepat waktu
+
+### Soal 12 — Audit Validasi Input
+Tinjau fungsi publik di `TokenStaking` dan `Crowdfunding` (Phase 5). Daftar setiap parameter, validasi yang sudah ada, dan validasi yang hilang.
+
+**✅ Selesai jika:**
+- [ ] Tabel `Fungsi | Parameter | Validasi ada | Validasi hilang | Severity` mencakup semua fungsi external
+- [ ] Minimal satu validasi yang hilang dibuktikan dengan test yang menunjukkan perilaku tak diinginkan
+
+---
+
+---
+
+> ⚖️ **Pengingat**: semua exploit di lab ini dijalankan **hanya** sebagai test Foundry / di anvil atau fork lokal. Lihat bagian **⚖️ Etika & Batasan Hukum** di awal fase ini.
+
 # 📝 Mini Project: Exploit Lab
 
-Bangun "lab" berisi minimal **7 contract rentan** (satu per kelas bug C2–C7), masing-masing dengan exploit PoC dan versi fix.
+Bangun "lab" berisi minimal **8 contract rentan** (satu per kelas bug C2–C7 & C9), masing-masing dengan exploit PoC dan versi fix.
 
 | # | Kelas Bug | Vulnerable | Exploit Test | Fixed + Test |
 |---|---|---|---|---|
@@ -623,6 +771,7 @@ Bangun "lab" berisi minimal **7 contract rentan** (satu per kelas bug C2–C7), 
 | 5 | Spot price oracle | `SpotLending.sol` + mock AMM | ⬜ | ⬜ |
 | 6 | Signature replay | `AirdropClaim.sol` | ⬜ | ⬜ |
 | 7 | DoS push payment | `KingOfEther.sol` | ⬜ | ⬜ |
+| 8 | Insecure randomness | `CoinFlip.sol` | ⬜ | ⬜ |
 
 Setiap folder bug dilengkapi `README.md` singkat: **Root cause → Exploit steps → Fix → Referensi exploit nyata**.
 
@@ -635,7 +784,7 @@ Setiap folder bug dilengkapi `README.md` singkat: **Root cause → Exploit steps
 | Tingkat | Cakupan |
 |---|---|
 | 🟢 **Core** — wajib sebelum lanjut fase | Bug #1 (reentrancy), #3 (`tx.origin`), #6 (signature replay) + Ethernaut level 1–10 |
-| 🟡 **Extended** — disarankan | Ketujuh bug + Damn Vulnerable DeFi 1–3 |
+| 🟡 **Extended** — disarankan | Kedelapan bug + Damn Vulnerable DeFi 1–3 |
 | 🔴 **Stretch** — untuk portfolio | Ethernaut 11–20, DVD 4–6, reproduksi 1 exploit nyata dari DeFiHackLabs |
 
 ### ✅ Kriteria Lulus (Core)
@@ -738,6 +887,18 @@ contract LoyaltyRewards {
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| Exploit tidak menguras contract | `receive()` attacker tidak memanggil ulang, atau `transfer` (2300 gas) dipakai korban | Log di `receive()`, cek trace `-vvvv` untuk melihat urutan call |
+| `slither: command not found` / error versi solc | Slither belum terpasang atau solc tidak cocok | `python3 -m pip install slither-analyzer` lalu `solc-select install 0.8.24 && solc-select use 0.8.24` |
+| Tidak yakin severity sebuah temuan | Belum memisahkan impact & likelihood | Pakai matriks severity di C1 dan contoh kalibrasi di Soal 10 |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -773,6 +934,26 @@ git commit -m "security: add LoyaltyRewards audit report (Phase 8 challenge)"
 11. Berikan dua contoh DoS yang disebabkan oleh push payment atau unbounded loop.
 12. Apa batasan static analysis tools dibanding manual review? Kelas bug apa yang paling sering terlewat?
 
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. CEI memperbarui state sebelum external call. `nonReentrant` hanya melindungi fungsi yang memakainya; reentrancy lintas fungsi, lintas contract, atau read-only bisa melewatinya. Gunakan keduanya.
+2. Contract lain memanggil fungsi `view` milik contract A ketika A sedang di tengah eksekusi dengan state tidak konsisten (saat external call). `view` tidak diberi guard, sehingga pembaca mendapat nilai yang salah (misal harga LP).
+3. Contract perantara yang dipanggil korban akan lolos pengecekan `tx.origin`. Penggunaan yang sah sangat jarang; `tx.origin == msg.sender` pernah dipakai untuk memastikan pemanggil adalah EOA, tetapi rapuh dan rusak oleh account abstraction/EIP-7702.
+4. Attacker bisa front-run memanggil `initialize()` lebih dulu dan menjadi owner. Mitigasi: deploy & initialize dalam satu transaksi (data init di constructor proxy), dan `_disableInitializers()` di implementation.
+5. Pembagian integer membulatkan ke bawah, jadi membagi dulu membuang presisi. Bulatkan berpihak ke protokol: ke bawah untuk yang dibayarkan ke user, ke atas untuk yang harus dibayar user.
+6. Attacker deposit 1 wei, lalu "mendonasikan" token langsung agar harga per share sangat tinggi, sehingga deposit korban dibulatkan menjadi 0–1 share dan attacker mengambil bagiannya. Mitigasi: virtual shares/decimals offset (OZ ERC-4626), dead shares, atau deposit awal oleh deployer.
+7. Flash loan memberi modal sangat besar sementara untuk menggeser reserve AMM di transaksi yang sama, sehingga harga spot yang dibaca di transaksi itu palsu. Alternatif: Chainlink, TWAP, atau beberapa sumber dengan cek deviasi.
+8. `answer > 0`; tidak stale (`block.timestamp - updatedAt` ≤ heartbeat); pakai `decimals()` feed; di L2 cek Sequencer Uptime Feed + grace period. (Tambahan: batas kewajaran harga.)
+9. Nonce, chainId, address contract (verifying contract), deadline, serta parameter aksi yang dimaksud (penerima/jumlah) — idealnya lewat domain separator EIP-712.
+10. Signature ECDSA *malleable*: (r, n − s) juga valid untuk pesan yang sama, sehingga signature "baru" lolos pengecekan bytes. Lacak hash pesan/nonce, bukan bytes signature, dan gunakan library yang menolak `s` tinggi.
+11. (1) Mengembalikan ETH ke "raja" sebelumnya dengan push; contract yang selalu revert membuat tidak ada yang bisa menggantikannya. (2) Loop pembagian reward/airdrop atas array yang terus bertambah hingga melebihi block gas limit.
+12. Tool mendeteksi pola, tetapi tidak memahami intent, logika bisnis, atau asumsi ekonomi; banyak false positive. Yang paling sering terlewat: logic errors, manipulasi ekonomi/oracle, dan desain access control yang keliru.
+
+</details>
+
 ---
 
 ## 📊 Progress Tracker
@@ -786,8 +967,9 @@ git commit -m "security: add LoyaltyRewards audit report (Phase 8 challenge)"
 - [ ] **C6**: Front-Running & Signatures — *sandwich, commit-reveal, replay, malleability*
 - [ ] **C7**: DoS — *unbounded loop, push payment, forced ETH, return bomb*
 - [ ] **C8**: Tooling & Report — *Slither, Aderyn, audit workflow, template temuan*
-- [ ] **Exercise**: Soal 1–10
-- [ ] **Mini Project**: Exploit Lab (7 bug + PoC + fix)
+- [ ] **C9**: Randomness & Input Validation — *prevrandao, VRF, commit-reveal, checklist validasi*
+- [ ] **Exercise**: Soal 1–12
+- [ ] **Mini Project**: Exploit Lab (8 bug + PoC + fix)
 - [ ] **Wargame**: Ethernaut 1–20, Damn Vulnerable DeFi 1–6
 - [ ] **Challenge**: Audit LoyaltyRewards + report
 - [ ] **Knowledge Check**: 12 Questions
@@ -799,7 +981,7 @@ git commit -m "security: add LoyaltyRewards audit report (Phase 8 challenge)"
 
 ### Wajib Baca
 - [SWC Registry](https://swcregistry.io/) — klasifikasi dasar; **tidak diperbarui sejak 2020**, lengkapi dengan Solodit di bawah
-- [Consensys — Smart Contract Best Practices: Attacks](https://consensys.github.io/smart-contract-best-practices/attacks/)
+- [Consensys — Smart Contract Best Practices: Attacks](https://consensysdiligence.github.io/smart-contract-best-practices/attacks/)
 - [Solidity Docs — Security Considerations](https://docs.soliditylang.org/en/latest/security-considerations.html)
 - [EIP-712: Typed Structured Data Hashing and Signing](https://eips.ethereum.org/EIPS/eip-712)
 
@@ -807,6 +989,10 @@ git commit -m "security: add LoyaltyRewards audit report (Phase 8 challenge)"
 - [Rekt News](https://rekt.news/) — post-mortem exploit DeFi
 - [DeFiHackLabs](https://github.com/SunWeb3Sec/DeFiHackLabs) — reproduksi exploit nyata dalam Foundry
 - [Solodit](https://solodit.xyz/) — database temuan audit dari berbagai firma
+
+### Standar Klasifikasi Risiko
+- [OWASP Smart Contract Top 10 (2025)](https://owasp.org/www-project-smart-contract-top-10/) · [edisi 2026](https://scs.owasp.org/sctop10/)
+- [Chainlink VRF](https://docs.chain.link/vrf)
 
 ### Wargame & Kompetisi
 - [Ethernaut](https://ethernaut.openzeppelin.com/)

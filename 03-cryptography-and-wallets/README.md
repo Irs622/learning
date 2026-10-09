@@ -4,6 +4,7 @@
 > **Phase**: 3 of 13
 > **Estimated Time**: 🚀 Intensif 7–10 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 3–4 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [02-ethereum-and-evm](../02-ethereum-and-evm/README.md) ✅
+> **Status verifikasi**: **Reviewed** · 9 Okt 2026 · teks direview penuh; derivasi address/HD & contract signature diuji — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -12,9 +13,9 @@
 Setelah menyelesaikan fase ini, Anda akan mampu:
 
 - Menjelaskan sifat-sifat kriptografis **Hash Functions** (Keccak-256 & SHA-256) dan mengapa mereka menjadi fondasi keamanan blockchain.
-- Memahami matematika di balik **Elliptic Curve Cryptography (secp256k1)** tanpa perlu menjadi ahli matematika.
+- **Menjelaskan** mengapa k × G mudah dihitung tetapi k tidak bisa diturunkan dari public key (ECDLP) pada kurva **secp256k1**.
 - Menelusuri seluruh pipeline: **Entropy → Private Key → Public Key → Ethereum Address** secara programatik.
-- Memahami mekanisme **ECDSA Digital Signature** — cara menandatangani dan memverifikasi pesan tanpa berbagi Private Key.
+- **Menandatangani** pesan dengan ECDSA dan **me-recover** address penandatangan (`ecrecover`/`verifyMessage`), termasuk memisahkan komponen `v`, `r`, `s`.
 - Menjelaskan arsitektur **HD Wallet** (Hierarchical Deterministic Wallet): dari seed phrase 12 kata hingga ribuan keypair yang bisa di-derive.
 - Mengetahui apa yang **sebenarnya terjadi** ketika user menekan "Sign" atau "Confirm" di MetaMask.
 
@@ -553,6 +554,9 @@ Sebagai perbandingan: usia alam semesta adalah ~1.38 × 10^10 tahun. Jadi brutef
 
 ```javascript
 // keypair-generator.js
+// ⚠️ HANYA UNTUK BELAJAR. Script ini MENCETAK private key ke terminal.
+//    Jangan pernah mengirim aset nyata ke address yang dibuat di sini, jangan
+//    menjalankannya di komputer bersama/CI, dan hapus output terminal setelah selesai.
 // Menggunakan '@noble/secp256k1' (library ringan & diaudit)
 // Install (versi di-pin — API & path import berubah di major version berikutnya):
 //   npm install @noble/secp256k1@2 @noble/hashes@1
@@ -1010,6 +1014,8 @@ console.log("s:", sig.s);      // 32 bytes hex
 **Skenario**: Anda menemukan smart contract DeFi berikut yang memiliki bug:
 
 ```solidity
+// ℹ️ Potongan untuk soal — butuh interface `IERC20` (Phase 4 C7); tidak dimaksudkan di-compile
+// berdiri sendiri.
 contract VulnerableAirdrop {
     address public owner;
     IERC20 public token;
@@ -1053,6 +1059,8 @@ contract VulnerableAirdrop {
 
 **c)** Versi yang aman:
 ```solidity
+// ℹ️ Potongan jawaban — butuh interface `IERC20` & inisialisasi `owner`/`token`; untuk versi
+// lengkap yang teruji lihat `SafeRewardClaimer` di C4.
 contract SafeAirdrop {
     address public owner;
     IERC20 public token;
@@ -1316,7 +1324,8 @@ OUTPUT: List 5 address Ethereum pertama (m/44'/60'/0'/0/0 sampai m/44'/60'/0'/0/
 
 **Gunakan library**:
 ```javascript
-// Install (versi di-pin): npm install @scure/bip39@1 @scure/bip32@1 @noble/secp256k1@2 @noble/hashes@1
+// Install (versi di-pin): npm install @scure/bip39@1 @scure/bip32@1 @noble/secp256k1@2
+// @noble/hashes@1
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english";
 import { HDKey } from "@scure/bip32";
@@ -1516,6 +1525,18 @@ Tulis test menggunakan Foundry (setelah Phase 6) atau JavaScript dengan `ethers`
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `ERR_MODULE_NOT_FOUND` / path import `@noble`/`@scure` | Versi major berbeda dari materi (path import berubah) | Pasang versi yang di-pin di materi (`@noble/secp256k1@2 @noble/hashes@1 @scure/bip39@1 @scure/bip32@1`) |
+| `SyntaxError: Cannot use import statement outside a module` | Script ESM tanpa konfigurasi | Tambahkan `"type": "module"` di `package.json` atau pakai ekstensi `.mjs` |
+| Address hasil derivasi berbeda | Prefix `0x04` tidak dibuang, memakai SHA3, atau mengambil 20 byte pertama | Hash `publicKey.slice(1)` dengan Keccak-256, ambil 20 byte **terakhir**; cocokkan dengan `cast wallet address` |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -1549,6 +1570,24 @@ git commit -m "feat: implement blind auction commit-reveal scheme (Phase 3 chall
 9. Jelaskan Signature Replay Attack. Sebutkan tiga informasi yang sebaiknya dimasukkan ke dalam message hash untuk mencegahnya.
 10. Anda menemukan sebuah "Ethereum private key generator tool" open-source di GitHub dengan 500 stars. Jelaskan proses due-diligence yang seharusnya Anda lakukan sebelum menggunakannya.
 
+<details>
+<summary>🔑 Kunci jawaban Knowledge Check — buka <b>setelah</b> Anda menjawab sendiri</summary>
+
+> Jawaban ringkas sebagai acuan. Jika jawaban Anda berbeda tetapi alasannya benar, itu tetap benar — bandingkan alasannya, bukan kalimatnya.
+
+1. `sha3-256` Node.js adalah SHA-3 standar NIST (FIPS 202) yang memakai padding berbeda dari Keccak asli yang dipakai Ethereum, sehingga output-nya berbeda. Namanya mirip dan tidak ada error — hanya hasil yang salah (selector, address, slot), jadi bug-nya diam-diam.
+2. Pre-image resistance → commit-reveal. Collision resistance → hash transaksi/block sebagai ID unik. Avalanche effect → perubahan kecil pada block lama mengubah hash dan memutus rantai. Deterministic → semua node mendapatkan selector, slot mapping, dan state root yang sama.
+3. Ruang kunci ≈ 2²⁵⁶, dan serangan terbaik terhadap ECDLP butuh ~2¹²⁸ operasi — jauh di luar kemampuan komputasi mana pun. Risiko nyata justru dari keacakan yang lemah, bukan brute force.
+4. Entropy 256-bit dari CSPRNG → private key (integer 1 ≤ k < n) → public key = k × G (perkalian skalar di secp256k1, 64 byte x‖y) → keccak256(public key) → ambil 20 byte terakhir = address → (opsional) format EIP-55.
+5. `k` adalah bilangan acak rahasia per signature untuk menghitung R = k·G (nilai r). Jika k yang sama dipakai untuk dua pesan berbeda, siapa pun bisa menghitung k = (z₁ − z₂)/(s₁ − s₂), lalu private key d = (s·k − z)/r (kasus Sony PS3). Implementasi modern memakai k deterministik (RFC 6979).
+6. Prefix memisahkan domain: pesan yang ditandatangani tidak bisa sekaligus menjadi transaksi Ethereum yang valid atau data lain. Tanpa prefix, DApp jahat bisa meminta Anda menandatangani hash yang ternyata hash transaksi.
+7. BIP-39: mengubah entropy ↔ kata mnemonic dan menurunkan seed (PBKDF2). BIP-32: menurunkan pohon kunci anak dari seed memakai chain code. BIP-44: struktur path standar `m/purpose'/coin_type'/account'/change/index`.
+8. Address keempat (indeks 3, dihitung dari 0) pada path default MetaMask. `44'` = BIP-44 (hardened), `60'` = Ethereum, `0'` = account 0, `0` = rantai eksternal, `3` = indeks address.
+9. Signature yang valid dipakai ulang untuk menjalankan aksi lagi (di contract yang sama, chain lain, atau contract lain). Masukkan minimal: nonce per user, chainId, address contract (verifying contract), ditambah deadline — idealnya lewat EIP-712.
+10. Cek reputasi & riwayat maintainer, baca source (terutama sumber acak & panggilan jaringan), audit dependency, jalankan offline/air-gapped, bandingkan output dengan tool tepercaya (`cast wallet`), uji dengan dana kecil dulu. Jumlah stars bisa dibeli — bukan bukti keamanan.
+
+</details>
+
 ---
 
 ## 📊 Progress Tracker
@@ -1569,18 +1608,18 @@ git commit -m "feat: implement blind auction commit-reveal scheme (Phase 3 chall
 ## 🔗 Resources
 
 ### Wajib Baca
-- [Mastering Ethereum: Chapter 4 — Keys & Addresses](https://github.com/ethereumbook/ethereumbook/blob/develop/04keys-addresses.asciidoc)
+- [Mastering Ethereum: Chapter 4 — Cryptography (kunci & address)](https://github.com/ethereumbook/ethereumbook/blob/490d19e42e0e5e06184b0298807472756c89cb81/src/chapter_4.md)
 - [Ethereum.org: Accounts](https://ethereum.org/en/developers/docs/accounts/)
 - [EIP-55: Checksum Address Encoding](https://eips.ethereum.org/EIPS/eip-55)
 - [EIP-191: Signed Data Standard](https://eips.ethereum.org/EIPS/eip-191)
 - [EIP-712: Typed Structured Data Hashing](https://eips.ethereum.org/EIPS/eip-712)
-- [BIP-39: Mnemonic Code for Generating Deterministic Keys](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki)
-- [BIP-44: Multi-Account Hierarchy for Deterministic Wallets](https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)
+- [BIP-39: Mnemonic Code for Generating Deterministic Keys](https://github.com/bitcoin/bips/blob/927b6de9915c9262615a6399de51b200f81e5aa4/bip-0039.mediawiki)
+- [BIP-44: Multi-Account Hierarchy for Deterministic Wallets](https://github.com/bitcoin/bips/blob/927b6de9915c9262615a6399de51b200f81e5aa4/bip-0044.mediawiki)
 
 ### Tools
 - [Ethereum Signature Database](https://www.4byte.directory/)
 - [Ian Coleman BIP-39 Tool](https://iancoleman.io/bip39/) *(pakai offline untuk keamanan!)*
-- [Vanity ETH Address Generator](https://vanity-eth.tk/) *(open source, cek source code-nya!)*
+- [vanity-eth (source code)](https://github.com/bokub/vanity-eth) *(open source, cek source code-nya!)*
 
 ### Libraries (Audit-Friendly, Digunakan di Production)
 - [`@noble/secp256k1`](https://github.com/paulmillr/noble-secp256k1) — ECC operations

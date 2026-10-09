@@ -4,6 +4,7 @@
 > **Phase**: 11 of 13
 > **Estimated Time**: 🚀 Intensif 21–30 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 8–11 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [08-smart-contract-security](../08-smart-contract-security/README.md) ✅ | [07-smart-contract-testing](../07-smart-contract-testing/README.md) ✅
+> **Status verifikasi**: **Reviewed (parsial)** · 9 Okt 2026 · contoh numerik dihitung ulang; kode belum diuji — lihat definisi status di [README utama](../README.md)
 
 ---
 
@@ -18,7 +19,7 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 - Mengimplementasikan **staking reward** yang efisien dengan pola akumulator `rewardPerToken`.
 - Merancang **lending protocol**: overcollateralization, LTV, health factor, likuidasi, dan interest rate model.
 - Mengintegrasikan **Chainlink** dan standar vault **ERC-4626** dengan aman.
-- Mengenali **risiko composability** (money legos) dan kelas exploit khas DeFi.
+- **Mengidentifikasi** minimal tiga risiko composability (depeg, read-only reentrancy, token non-standar) pada sebuah integrasi DeFi.
 
 ---
 
@@ -37,8 +38,8 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 cd 11-tokenomics-and-defi/
 forge init lab --no-git
 cd lab
-forge install OpenZeppelin/openzeppelin-contracts --no-git
-forge install smartcontractkit/chainlink-brownie-contracts --no-git   # interface AggregatorV3
+forge install OpenZeppelin/openzeppelin-contracts@v5.6.1 --no-git
+forge install smartcontractkit/chainlink-brownie-contracts@1.3.0 --no-git   # interface AggregatorV3
 ```
 
 > ⚠️ Kode fase ini ditempatkan di subfolder **`lab/`**. Jangan `forge init .` di folder fase — folder ini sudah berisi `README.md` materi, dan `forge init --force` akan **menimpanya**. Semua path `src/`, `test/`, `script/`, `audits/` di fase ini relatif terhadap `lab/`. `forge init` sudah memasang `forge-std`; hapus contoh `Counter*.sol` bawaan.
@@ -260,6 +261,21 @@ V3: LP memilih rentang [P_a, P_b]           (modal jauh lebih efisien di rentang
 ```
 
 V3 membuat LP menjadi *aktif* — keuntungan lebih tinggi, tetapi impermanent loss di dalam rentang juga lebih besar.
+
+## V4: Singleton & Hooks (Gambaran)
+
+Uniswap V4 aktif di mainnet sejak **akhir Januari 2025**. Matematika swap di dalam pool tetap memakai concentrated liquidity seperti V3; yang berubah adalah arsitekturnya:
+
+| Fitur | V2/V3 | V4 |
+|---|---|---|
+| Lokasi pool | Satu contract per pool (dibuat Factory) | Semua pool di satu contract **`PoolManager`** (*singleton*) → membuat pool & multi-hop jauh lebih murah |
+| Akuntansi | Token dipindahkan di setiap langkah | **Flash accounting**: perubahan saldo dicatat selama transaksi (memakai *transient storage*, EIP-1153) dan hanya selisih bersih yang dipindahkan di akhir |
+| Kustomisasi | Tidak ada (fee tier tetap) | **Hooks**: contract eksternal yang dipanggil sebelum/sesudah inisialisasi, add/remove liquidity, swap, dan donate → dynamic fee, limit order on-chain, TWAMM, dll. |
+| ETH | Harus dibungkus WETH | Mendukung ETH native |
+
+> ⚠️ Hooks adalah kode pihak ketiga yang ikut berjalan di setiap swap pada pool tersebut. Saat berinteraksi dengan pool V4, audit hook-nya sama seriusnya dengan audit protokol (lihat Phase 8). Detail resmi: [Uniswap v4 — Architecture](https://developers.uniswap.org/docs/protocols/v4/concepts/architecture).
+
+Untuk latihan di fase ini, **V2 tetap menjadi fondasi** karena matematikanya paling mudah diturunkan dan diimplementasikan sendiri.
 
 ## Latihan C3
 
@@ -691,6 +707,18 @@ SECURITY:
 
 ---
 
+## 🆘 Jika Anda Stuck
+
+| Gejala | Penyebab umum | Solusi |
+|---|---|---|
+| `k` turun setelah swap di test | Fee dihitung salah atau pembulatan berpihak ke user | Bandingkan dengan rumus `getAmountOut` di C2 dan contoh numerik Soal 2 |
+| Health factor/likuidasi meleset jauh | Decimals WETH (18) vs USDC (6) vs oracle (8) tercampur | Normalisasi semua nilai ke satu skala (misal 18 decimals) sebelum dibandingkan |
+| `panic: division or modulo by zero (0x12)` | `totalStaked`/`totalSupply` masih 0 | Tangani kasus kosong secara eksplisit (C5 Soal 7) |
+
+**Langkah umum saat buntu:** (1) baca pesan error lengkap — jalankan ulang dengan `-vvvv` untuk trace; (2) ulangi contoh terkecil yang masih gagal; (3) cek versi tool sesuai bagian Setup; (4) cari pesan error persisnya di [Ethereum Stack Exchange](https://ethereum.stackexchange.com/) atau GitHub Issues tool terkait; (5) tulis apa yang sudah dicoba di **🗒️ Notes** — sering kali jawabannya muncul saat menuliskannya.
+
+---
+
 ## 📁 GitHub Task
 
 ```bash
@@ -750,8 +778,8 @@ git commit -m "feat: overcollateralized lending protocol with kinked rate model 
 
 ### Wajib Baca (Source Code)
 - [Uniswap V2 Core](https://github.com/Uniswap/v2-core) · [V2 Periphery](https://github.com/Uniswap/v2-periphery)
-- [Uniswap V2 Whitepaper](https://docs.uniswap.org/whitepaper.pdf)
-- [Synthetix StakingRewards.sol](https://github.com/Synthetixio/synthetix/blob/develop/contracts/StakingRewards.sol)
+- [Uniswap V2 Whitepaper](https://app.uniswap.org/whitepaper.pdf)
+- [Staking Rewards — pola Synthetix (Solidity by Example)](https://solidity-by-example.org/defi/staking-rewards/) *(repo Synthetix v2 asli sudah tidak tersedia publik)*
 - [Aave V3 Core](https://github.com/aave/aave-v3-core) · [Compound V2](https://github.com/compound-finance/compound-protocol)
 - [EIP-4626: Tokenized Vaults](https://eips.ethereum.org/EIPS/eip-4626)
 
