@@ -2,7 +2,7 @@
 
 > **Level**: 2–3 (Technical Fundamentals + Implementation)
 > **Phase**: 4 of 13
-> **Estimated Time**: 10–14 hari
+> **Estimated Time**: 🚀 Intensif 10–14 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 4–5 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [03-cryptography-and-wallets](../03-cryptography-and-wallets/README.md) ✅
 
 ---
@@ -40,24 +40,31 @@ curl -L https://foundry.paradigm.xyz | bash
 foundryup
 
 # Verify installation
-forge --version   # forge 0.2.0 (xxx)
-cast --version    # cast 0.2.0 (xxx)
-anvil --version   # anvil 0.2.0 (xxx)
+forge --version   # forge Version: 1.x.x
+cast --version
+anvil --version
 
-# Init project untuk Phase 4
+# Init project untuk Phase 4 — di SUBFOLDER lab/
 cd 04-solidity-fundamentals/
-forge init . --no-git   # init tanpa nested git
+forge init lab --no-git   # init tanpa nested git
+cd lab
 ```
+
+> ⚠️ **Jangan** `forge init .` di folder fase: folder ini sudah berisi `README.md` materi, sehingga `forge init` menolak berjalan, dan jika dipaksa dengan `--force` **README materi akan ditimpa** README bawaan Foundry.
 
 Struktur folder yang akan dibuat Foundry:
 ```
 04-solidity-fundamentals/
-├── src/           ← Smart contracts Anda
-├── test/          ← Test files
-├── script/        ← Deployment scripts
-├── lib/           ← Dependencies (git submodules)
-└── foundry.toml   ← Config file
+├── README.md          ← Materi (file ini)
+└── lab/
+    ├── src/           ← Smart contracts Anda
+    ├── test/          ← Test files
+    ├── script/        ← Deployment scripts
+    ├── lib/           ← Dependencies (di-.gitignore, install ulang dengan forge install)
+    └── foundry.toml   ← Config file
 ```
+
+Hapus contoh bawaan (`src/Counter.sol`, `test/Counter.t.sol`, `script/Counter.s.sol`) setelah Anda melihat isinya. Semua path `src/`, `test/`, `script/` di fase ini relatif terhadap `lab/`.
 
 ---
 
@@ -66,10 +73,10 @@ Struktur folder yang akan dibuat Foundry:
 | # | Konsep | Status |
 |:---:|---|:---:|
 | **C1** | [Anatomy of a Solidity Contract](#c1-anatomy-of-a-solidity-contract) | ⬜ |
-| **C2** | [Type System: Value Types](#c2-type-system-value-types) | ⬜ |
-| **C3** | [Type System: Reference Types & Data Locations](#c3-type-system-reference-types--data-locations) | ⬜ |
-| **C4** | [Functions: Visibility, Mutability & Modifiers](#c4-functions-visibility-mutability--modifiers) | ⬜ |
-| **C5** | [Error Handling: require, revert, assert & Custom Errors](#c5-error-handling-require-revert-assert--custom-errors) | ⬜ |
+| **C2** | [Type System: Value Types](#c2-type-system--value-types) | ⬜ |
+| **C3** | [Type System: Reference Types & Data Locations](#c3-type-system--reference-types--data-locations) | ⬜ |
+| **C4** | [Functions: Visibility, Mutability & Modifiers](#c4-functions--visibility-mutability--modifiers) | ⬜ |
+| **C5** | [Error Handling: require, revert, assert & Custom Errors](#c5-error-handling--require-revert-assert--custom-errors) | ⬜ |
 | **C6** | [Events & Logging](#c6-events--logging) | ⬜ |
 | **C7** | [Inheritance, Interfaces & Libraries](#c7-inheritance-interfaces--libraries) | ⬜ |
 
@@ -94,8 +101,8 @@ Di Solidity, setiap function adalah "instruksi untuk mengubah state machine" yan
 
 ```solidity
 // SPDX-License-Identifier: MIT
-// [1] License declaration — WAJIB sejak Solidity 0.6.8
-// Tanpa ini: compiler warning. Ini penting untuk open-source compliance.
+// [1] License declaration — sangat dianjurkan (sejak 0.6.8 compiler memberi WARNING jika tidak ada)
+// Penting untuk open-source compliance & verifikasi di Etherscan.
 
 pragma solidity ^0.8.24;
 // [2] Compiler version declaration
@@ -201,10 +208,12 @@ msg.sig       // bytes4 function selector dari calldata
 // block — Informasi tentang BLOCK SAAT INI
 block.number      // nomor block saat ini
 block.timestamp   // Unix timestamp block saat ini (dalam detik)
-                  // ⚠️ Bisa dimanipulasi validator dalam range kecil (~15 detik)!
+                  // Di Ethereum PoS ditentukan oleh slot (kelipatan 12 detik) — proposer
+                  // tidak bisa menggesernya bebas, tetapi JANGAN dipakai sebagai sumber
+                  // randomness; di L2/chain lain aturannya bisa berbeda (Phase 12).
 block.basefee     // base fee dalam wei (EIP-1559)
 block.chainid     // chain ID (1=Ethereum, 137=Polygon, dll)
-block.coinbase    // address validator yang memproduksi block ini
+block.coinbase    // address penerima fee (fee recipient) yang di-set proposer block ini
 
 // tx — Informasi tentang TRANSAKSI
 tx.gasprice   // gas price dari transaksi asal
@@ -371,18 +380,18 @@ int256 priceChange = int256(newPrice) - int256(oldPrice); // bisa negatif
 
 ```solidity
 address           wallet = 0x1234...;  // 20 bytes, bisa receive ETH
-address payable   payableWallet = payable(wallet); // Bisa receive ETH VIA .transfer() dan .send()
+address payable   payableWallet = payable(wallet); // Tipe yang bisa dipanggil .transfer() dan .send()
 
 // Properties & methods:
-wallet.balance;                           // Wei balance (SLOAD dari state)
+wallet.balance;                           // Wei balance (opcode BALANCE, bukan SLOAD)
 payableWallet.transfer(1 ether);          // Kirim 1 ETH, revert jika gagal
 bool ok = payableWallet.send(1 ether);   // Kirim, return false jika gagal
 (bool success,) = wallet.call{value: 1 ether}(""); // Paling fleksibel
 
 // Type conversions:
 address(this)          // address contract ini sendiri
-address(0)             // zero address (null address — tidak ada Private Key!)
-address(uint256(123))  // konversi dari uint256
+address(0)             // zero address (null address — tidak ada yang diketahui memegang private key-nya)
+address(uint160(123))  // konversi dari integer — WAJIB lewat uint160 (address(uint256(x)) = compile error)
 uint256(uint160(addr)) // konversi address ke uint256
 
 // ⚠️ address(0) sering digunakan untuk "burn" token (kirim ke sini = hilang selamanya)
@@ -532,7 +541,7 @@ contract TypeExercise {
 <details>
 <summary>💡 Pembahasan</summary>
 
-**test1()**: **(B) Runtime REVERT** — `uint8(200) + uint8(100) = 300`, melebihi max uint8 (255). Solidity ≥0.8.0 auto-revert overflow. Tapi ada subtlety: ekspresi `a + b` diproses sebagai `uint8 + uint8`, hasilnya dipromosikan ke `uint256` untuk return. Sebenarnya ini **compile error** karena implicit conversion dari `uint8` hasil penjumlahan ke `uint256` return type. Compiler akan catch ini dan report error.
+**test1()**: **(B) Runtime REVERT** — ekspresi `a + b` dihitung dalam tipe `uint8` (tipe operand), sehingga `200 + 100 = 300` melebihi max uint8 (255) → **panic `0x11` (arithmetic overflow)**. Subtlety: kode ini **tetap compile**, karena konversi implisit `uint8` → `uint256` untuk nilai return itu sah — tetapi konversi baru terjadi *setelah* penjumlahan `uint8` yang sudah overflow. Itulah sebabnya `test2()` melakukan cast **sebelum** menjumlahkan.
 
 **test2()**: **(C) Normal** — cast ke `uint256` dulu sebelum dijumlahkan. `uint256(200) + uint256(100) = 300` — valid, jauh dari max uint256.
 
@@ -619,7 +628,7 @@ struct EmployeeBad {
 // ─────────────────────────────────
 // - State variables selalu di storage
 // - SLOAD: 2100 gas (cold), 100 gas (warm)
-// - SSTORE: 20,000 gas (new slot), 2,900 gas (existing)
+// - SSTORE: 20,000 gas (slot kosong → terisi), 2,900 gas (ubah nilai) — +2,100 jika slot masih cold
 // - Perubahan tidak terbalik jika tidak ada revert
 
 // MEMORY: Sementara, per-call
@@ -652,7 +661,8 @@ contract ArrayDemo {
         // Dynamic array operations
         dynamicArray.push(42);           // Tambah elemen di akhir
         dynamicArray.push(100);
-        uint256 last = dynamicArray.pop(); // Hapus elemen terakhir (return nilainya)
+        dynamicArray.pop();              // Hapus elemen terakhir — TIDAK mengembalikan nilai
+                                         // (`uint256 x = arr.pop();` = compile error)
         uint256 len  = dynamicArray.length;
         
         // Delete: tidak menghapus elemen dari array, hanya reset ke default value (0)!
@@ -936,8 +946,9 @@ contract VisibilityDemo {
     function publicFn() public { /* ... */ }
     
     // EXTERNAL: Hanya bisa dipanggil dari LUAR contract
-    // Lebih gas-efisien dari public untuk fungsi yang tidak dipanggil secara internal
-    // Parameter bisa menggunakan calldata (lebih murah dari memory)
+    // Dulu lebih hemat gas dari public; sejak Solidity 0.6.9 public juga boleh memakai
+    // parameter calldata sehingga selisihnya kecil. Pilih external untuk menyatakan INTENT:
+    // "fungsi ini bagian dari API eksternal, bukan helper internal".
     function externalFn(uint256[] calldata data) external { /* ... */ }
     
     // INTERNAL: Hanya dari dalam contract ini DAN contract turunan (seperti protected di OOP)
@@ -1101,9 +1112,11 @@ contract OwnedToken is Ownable {
     }
 }
 
-// Pattern 3: Initializer (untuk upgradeable contracts — preview)
-// Upgradeable contracts tidak bisa punya constructor yang menulis ke storage
-// Menggunakan fungsi initialize() yang dipanggil sekali oleh deployer
+// Pattern 3: Initializer (untuk upgradeable contracts — preview, detail di Phase 13 C1)
+// Di balik proxy, constructor implementation menulis ke storage IMPLEMENTATION, bukan
+// storage proxy — jadi setup awal dipindah ke fungsi initialize() yang dipanggil sekali.
+// ⚠️ Contoh di bawah rentan front-running jika deploy & initialize dilakukan di tx terpisah
+//    (Phase 8 C3); di production gunakan Initializable dari OpenZeppelin.
 contract UpgradeableToken {
     bool private _initialized;
     string public name;
@@ -1145,6 +1158,12 @@ contract StakingPool {
     // - emergencyUnpause(): onlyOwner
 }
 ```
+
+**✅ Selesai jika:**
+- [ ] Contract compile di `lab/` (`forge build`)
+- [ ] Test: stake ≤ minimum revert, stake saat paused revert, unstake tanpa stake revert, non-owner tidak bisa pause
+- [ ] Penjelasan di Notes: apakah urutan `validAmount` vs `whenNotPaused` mengubah perilaku atau hanya error yang muncul lebih dulu?
+
 
 ---
 
@@ -1316,6 +1335,13 @@ contract LendingPool {
 }
 ```
 
+**✅ Selesai jika:**
+- [ ] Tidak ada `require(..., "string")` tersisa; setiap custom error membawa parameter yang membantu debugging
+- [ ] Setiap `call` terjadi **setelah** semua perubahan state
+- [ ] Test dengan contract attacker membuktikan `withdraw` tidak bisa di-reenter untuk menguras pool
+- [ ] Bonus: tulis di Notes satu bug **logika** lain yang Anda temukan (bukan soal error/CEI)
+
+
 ---
 
 ---
@@ -1395,10 +1421,10 @@ contract TokenWithEvents {
 
 ```text
 Event LOG opcode di EVM:
-  Topics (indexed): Disimpan dalam Bloom filter, bisa di-query efisien
+  Topics (indexed): bisa di-filter efisien (diindeks oleh logs Bloom filter di block header)
     - Max 3 indexed params (+ 1 topic untuk event signature hash)
-    - Setiap indexed param: keccak256-nya disimpan sebagai topic
-    - Dynamic types (string, bytes) yang di-index: keccak256(value) disimpan!
+    - Value type (address, uint, bool, bytes32) disimpan APA ADANYA sebagai topic (di-pad 32 byte)
+    - Dynamic types (string, bytes, array, struct) yang di-index: hanya keccak256(value) yang disimpan!
       → Anda kehilangan nilai aslinya dari event topics!
     
   Data (non-indexed): Disimpan di-apa adanya (ABI encoded)
@@ -1431,6 +1457,12 @@ Fitur:
 ```
 
 Tuliskan deklarasi event Solidity untuk semua fitur di atas.
+
+**✅ Selesai jika:**
+- [ ] Setiap event memakai ≤ 3 parameter `indexed`
+- [ ] Untuk setiap `indexed`, tulis query frontend/indexer yang dilayaninya (misal "semua listing milik seller X")
+- [ ] Bandingkan dengan event marketplace nyata (cari di Etherscan, misal Seaport) dan catat 2 perbedaan
+
 
 ---
 
@@ -1499,10 +1531,13 @@ contract ERC20Pausable is ERC20 {
     /* Inherits Ownable melalui ERC20 */
 }
 
-// Diamond problem diselesaikan oleh C3 linearization
-// Urutan inheritance: kanan ke kiri
-contract MyToken2 is ERC20Pausable, Ownable {
-    // Jika ada konflik, gunakan: super.method() atau ContractName.method()
+// Diamond problem diselesaikan oleh C3 linearization.
+// Aturan Solidity: tulis parent dari yang paling "BASE" ke yang paling "DERIVED".
+// ❌ contract MyToken2 is ERC20Pausable, Ownable {}  → Error: Linearization of inheritance graph impossible
+// ✅ (ilustrasi — argumen constructor Ownable diabaikan di sini)
+contract MyToken2 is Ownable, ERC20Pausable {
+    // Saat ada fungsi yang sama di beberapa parent, `super.method()` mengikuti urutan
+    // linearisasi dari KANAN ke KIRI; atau panggil eksplisit: ContractName.method()
 }
 ```
 
@@ -1638,6 +1673,9 @@ abstract contract PaymentSplitter {
         uint256[] memory shares = getShares();
         uint256 total = msg.value;
         
+        // ⚠️ Contoh sederhana untuk ilustrasi abstract contract. Push payment dalam loop
+        //    rawan DoS jika satu penerima menolak ETH, dan `transfer` hanya meneruskan
+        //    2300 gas — di production pakai pull pattern (Phase 8 C7).
         for (uint256 i = 0; i < recipients.length; i++) {
             uint256 amount = (total * shares[i]) / 100;
             payable(recipients[i]).transfer(amount);
@@ -1681,6 +1719,12 @@ Anda perlu membangun sebuah sistem yang terdiri dari beberapa contract:
 - b) Buat diagram inheritance atau komposisi yang Anda rekomendasikan.
 - c) Tulis interface `IVault` yang mendefinisikan API publik untuk semua tipe vault.
 - d) Tulis skeleton implementasi untuk `TimelockVault` yang meng-extends base contract yang tepat.
+
+**✅ Selesai jika:**
+- [ ] `IVault` dan ketiga vault compile; ketiganya meng-implement `IVault`
+- [ ] Diagram inheritance/komposisi ada di Notes
+- [ ] Test `TimelockVault`: withdraw sebelum 48 jam revert, tepat setelah 48 jam berhasil (`vm.warp`)
+
 
 ---
 
@@ -1737,6 +1781,22 @@ Contract yang menggabungkan semua konsep C1-C7:
 // - Security: Apply CEI pattern, validate all inputs, no zero-address
 ```
 
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Tahap 1 SimpleStorage + Tahap 2 TypedRegistry dengan test dasar |
+| 🟡 **Extended** — disarankan | Setiap custom error & event TypedRegistry dipicu oleh minimal satu test |
+| 🔴 **Stretch** — untuk portfolio | Optimasi storage struct (packing) + bandingkan gas sebelum/sesudah dengan `forge snapshot --diff` |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] `forge test` hijau di `lab/`
+- [ ] Setiap custom error punya test `vm.expectRevert(Error.selector)` yang memicunya
+- [ ] `register` dua kali dengan address sama → revert `AlreadyRegistered`
+- [ ] Anda bisa menjelaskan layout storage struct `DeveloperProfile` menggunakan `forge inspect TypedRegistry storageLayout`
+
+
 ---
 
 # 🏆 Challenge: Decentralized Voting Contract
@@ -1779,6 +1839,22 @@ Security Requirements:
   - Gunakan custom errors (bukan string)
   - Tidak ada reentrancy vulnerability
 ```
+
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Semua fungsi di spesifikasi + test happy path & revert |
+| 🟡 **Extended** — disarankan | Test semua custom error & event, termasuk tepat di batas deadline |
+| 🔴 **Stretch** — untuk portfolio | Bandingkan desain Anda dengan `VotingSystem` Phase 5 dan tulis 3 perbedaan di Notes |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] `forge test` hijau dengan minimal 1 test per fungsi dan per custom error
+- [ ] Vote dua kali dari address yang sama → revert `AlreadyVoted`
+- [ ] Vote setelah deadline → revert `VotingEnded`; execute tanpa quorum → revert `QuorumNotMet`
+- [ ] Tidak ada `require(..., "string")` — seluruh revert memakai custom error
+
 
 ---
 
@@ -1850,7 +1926,7 @@ git commit -m "feat: implement DecentralizedVoting contract (Phase 4 challenge)"
 - [Solidity by Example](https://solidity-by-example.org/) — Contoh kode per topik
 
 ### Security References
-- [SWC Registry (Smart Contract Weakness Classification)](https://swcregistry.io/)
+- [SWC Registry (Smart Contract Weakness Classification)](https://swcregistry.io/) — klasifikasi klasik, **tidak lagi diperbarui sejak 2020**; untuk temuan terkini gunakan [Solodit](https://solodit.xyz/)
 - [Consensys Smart Contract Best Practices](https://consensys.github.io/smart-contract-best-practices/)
 
 ### Untuk Pemahaman Lebih Dalam

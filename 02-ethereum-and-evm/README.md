@@ -2,7 +2,7 @@
 
 > **Level**: 1–2 (Conceptual + Technical Fundamentals)
 > **Phase**: 2 of 13
-> **Estimated Time**: 7–10 hari
+> **Estimated Time**: 🚀 Intensif 7–10 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 3–4 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [01-blockchain-fundamentals](../01-blockchain-fundamentals/README.md) ✅
 
 ---
@@ -32,11 +32,11 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 
 | # | Konsep | Status |
 |:---:|---|:---:|
-| **C1** | [Ethereum: The World Computer](#c1-ethereum-the-world-computer) | ⬜ |
-| **C2** | [Account Model: EOA vs Contract Account](#c2-account-model-eoa-vs-contract-account) | ⬜ |
-| **C3** | [EVM Architecture: Stack, Memory, Storage & Calldata](#c3-evm-architecture-stack-memory-storage--calldata) | ⬜ |
-| **C4** | [Storage Layout: Slot Packing & Mappings](#c4-storage-layout-slot-packing--mappings) | ⬜ |
-| **C5** | [ABI: Bagaimana Frontend Bicara ke Smart Contract](#c5-abi-bagaimana-frontend-bicara-ke-smart-contract) | ⬜ |
+| **C1** | [Ethereum: The World Computer](#c1-ethereum--the-world-computer) | ⬜ |
+| **C2** | [Account Model: EOA vs Contract Account](#c2-account-model--eoa-vs-contract-account) | ⬜ |
+| **C3** | [EVM Architecture: Stack, Memory, Storage & Calldata](#c3-evm-architecture--stack-memory-storage--calldata) | ⬜ |
+| **C4** | [Storage Layout: Slot Packing & Mappings](#c4-storage-layout--slot-packing--mappings) | ⬜ |
+| **C5** | [ABI: Bagaimana Frontend Bicara ke Smart Contract](#c5-abi--bagaimana-frontend-bicara-ke-smart-contract) | ⬜ |
 
 ---
 
@@ -200,7 +200,7 @@ function processAllUsers() external {
 <details>
 <summary>💡 Pembahasan</summary>
 
-**a)** Transaksi akan **revert dengan `out of gas`**. Looping 1 juta iterasi di EVM akan mengkonsumsi gas yang jauh melampaui `gasLimit` per block (30 juta gas di Ethereum, cukup untuk sekitar ~1,400 transfer ETH biasa). Pengirim transaksi kehilangan gas yang sudah dibayarkan, dan tidak ada satu pun user yang ter-process.
+**a)** Transaksi akan **revert dengan `out of gas`**. Looping 1 juta iterasi di EVM akan mengkonsumsi gas yang jauh melampaui `gasLimit` per block (puluhan juta gas — misal 36 juta gas cukup untuk ~1.700 transfer ETH biasa). Pengirim transaksi kehilangan gas yang sudah dibayarkan, dan tidak ada satu pun user yang ter-process.
 
 **b)** Di Laravel, server Anda punya CPU dan RAM tanpa batas (secara praktis). Di Solidity, setiap opcode dikuantifikasi dengan tepat dan dibatasi oleh gasLimit block. Selain itu, ukuran array `users` bisa saja dimanipulasi oleh attacker (jika ada fungsi `addUser`) untuk menyebabkan transaksi selalu `out of gas` — ini adalah serangan **DoS (Denial of Service) via gas exhaustion**.
 
@@ -267,7 +267,7 @@ State EOA di Ethereum:
 - Diidentifikasi oleh **alamat** yang diturunkan dari Public Key.
 - Dikontrol oleh **Private Key** — siapapun yang punya Private Key bisa menandatangani transaksi atas nama alamat ini.
 - Bisa **menginisiasi transaksi** (kirim ETH, panggil contract, deploy contract).
-- Tidak memiliki bytecode — tidak bisa diprogram.
+- Secara default tidak memiliki bytecode — tidak bisa diprogram. *(Sejak upgrade Pectra 2025, EIP-7702 memungkinkan EOA mendelegasikan eksekusinya ke kode contract; dibahas di Phase 13 C4.)*
 - Bisa menerima ETH tanpa logika apapun.
 
 ```
@@ -357,12 +357,14 @@ Ini berarti jika Alice men-deploy contract dengan nonce yang sama, alamatnya aka
 
 ### `CREATE2` (Deterministic Deployment)
 ```
-contractAddress = keccak256(0xFF, deployerAddress, salt, keccak256(bytecode))[12:]
+contractAddress = keccak256(0xFF ++ deployerAddress ++ salt ++ keccak256(initCode))[12:]
+// initCode = creation bytecode + argumen constructor (bukan runtime bytecode)
 ```
 
 `CREATE2` memungkinkan Anda memprediksi alamat contract **sebelum** deploy, asalkan bytecode dan salt sama. Ini sangat berguna untuk:
 - **Counterfactual deployment** (bayar ke alamat yang belum ada, deploy belakangan)
-- **Upgradeable patterns** (deploy proxy ke alamat yang sama setelah di-destroy)
+- **Factory dengan address yang bisa diprediksi** (misal Uniswap V2 pair, smart account ERC-4337)
+- *(Historis: "metamorphic contract" — redeploy kode berbeda ke address yang sama setelah `selfdestruct` — tidak lagi mungkin sejak EIP-6780/Dencun 2024)*
 - **State channel factories**
 
 ---
@@ -385,15 +387,18 @@ Anda menerima alamat `0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D`. Bagaimana car
 - **Contract**: `codeHash` adalah hash dari bytecode yang non-empty
 
 Cara paling langsung: Gunakan RPC method `eth_getCode(address, "latest")`:
-- Jika return `"0x"` (empty/zero bytes) → EOA
+- Jika return `"0x"` (empty/zero bytes) → EOA (atau address yang belum pernah dipakai)
 - Jika return bytecode hex string yang panjang → Contract Account
+- Jika return `0xef0100` + 20 byte address → EOA yang memakai delegasi EIP-7702 (Phase 13)
+
+⚠️ Di dalam Solidity, `address.code.length == 0` **bukan** bukti sebuah address adalah EOA: contract yang sedang dieksekusi constructor-nya juga memiliki code length 0.
 
 **b)** `0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D` adalah **Uniswap V2 Router** — salah satu contract paling terkenal di Ethereum. Anda akan melihat tab "Contract" di Etherscan, source code yang terverifikasi, dan ribuan transaksi.
 
 **c)**
 ```javascript
 async function isContract(address) {
-  const response = await fetch("https://rpc.ankr.com/eth", {
+  const response = await fetch("https://ethereum-rpc.publicnode.com", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -456,7 +461,7 @@ Sebuah tim startup Web3 ingin membuat fitur: **"Jika saldo ETH sebuah multisig w
 
 ## The Ethereum Virtual Machine
 
-EVM adalah **stack-based virtual machine** — berbeda dengan register-based VM yang mungkin Anda kenal (seperti JVM untuk Java, atau LLVM untuk C/C++).
+EVM adalah **stack-based virtual machine** — operand diambil dari dan hasil didorong ke *stack*, bukan ke register bernama. Ini mirip JVM (Java) yang juga stack-based, dan berbeda dengan arsitektur register-based seperti CPU x86/ARM atau LLVM IR.
 
 Ketika Anda menulis Solidity, compiler (`solc`) mengkompilasi kode Anda menjadi **EVM bytecode** — serangkaian instruksi opcode yang dieksekusi oleh EVM.
 
@@ -475,15 +480,16 @@ function add(uint256 a, uint256 b) pure returns (uint256) {
 }
 ```
 
-Setelah kompilasi menjadi EVM bytecode (disederhanakan):
+Setelah kompilasi menjadi EVM bytecode (sangat disederhanakan — output `solc` asli lebih panjang karena dispatcher selector & overflow check):
 ```
-PUSH1 0x04  // push arg 'a' ke stack
-PUSH1 0x24  // push arg 'b' ke stack
-ADD         // ambil dua nilai teratas dari stack, tambahkan, push hasilnya
-SWAP1       // swap dua nilai teratas stack
-POP         // buang nilai teratas
-JUMP        // lompat ke return location
+PUSH1 0x04      // offset arg 'a' di calldata (setelah 4 byte selector)
+CALLDATALOAD    // baca 32 byte calldata[4..36] → push 'a' ke stack
+PUSH1 0x24      // offset arg 'b'
+CALLDATALOAD    // baca calldata[36..68] → push 'b'
+ADD             // pop a & b, push a + b
+...             // simpan ke memory lalu RETURN
 ```
+Lihat bytecode asli dengan `forge inspect <Contract> deployedBytecode` dan telusuri opcode-nya di [evm.codes](https://www.evm.codes/).
 
 ---
 
@@ -552,10 +558,10 @@ function processName(string calldata name) external pure returns (bytes32) {
 ```
 Biaya memory = (words_used × 3) + (words_used² / 512)
 
-Menggunakan 32 bytes (1 word):    ~3 gas
-Menggunakan 1024 bytes (32 words): ~98 gas
-Menggunakan 1 MB:                  ~24,000 gas
-Menggunakan 10 MB:                 ~240,000+ gas (kuadratik!)
+Menggunakan 32 bytes (1 word):         ~3 gas
+Menggunakan 1024 bytes (32 words):     ~98 gas
+Menggunakan 1 MB (32.768 words):       ~2.2 juta gas
+Menggunakan 10 MB (327.680 words):     ~210 juta gas (melebihi block gas limit — kuadratik!)
 ```
 
 Biaya kuadratik ini adalah mekanisme proteksi lainnya terhadap serangan DoS dengan alokasi memory sangat besar.
@@ -570,7 +576,7 @@ Storage adalah area paling mahal dan paling penting — ini adalah tempat di man
 CONTRACT STORAGE
 
 Namespace: Per contract address (contract A tidak bisa baca storage contract B)
-Layout: 2^256 slots, masing-masing 32 bytes = 32 bytes
+Layout: 2^256 slots, masing-masing 32 bytes
          (Secara teori ada 2^256 slot — jumlah yang astronomical)
          (Secara praktis, hanya slot yang pernah ditulis yang exist)
 
@@ -587,10 +593,13 @@ SLOAD  (membaca dari storage):
   - Cold (pertama kali dalam transaksi ini): 2100 gas
   - Warm (sudah dibaca sebelumnya dalam transaksi yang sama): 100 gas
 
-SSTORE (menulis ke storage):
+SSTORE (menulis ke storage) — biaya dasar jika slot sudah WARM:
   - Slot 0 → nonzero value: 20,000 gas  (membuat slot baru)
   - Slot nonzero → nonzero value: 2,900 gas (mengubah nilai existing)
   - Slot nonzero → 0 (delete): 2,900 gas + mendapat refund 4,800 gas
+  + Jika slot masih COLD (belum diakses di tx ini): tambah 2,100 gas
+    → contoh: 0 → nonzero pada slot cold = 22,100 gas
+  (Refund dibatasi maksimal 1/5 dari gas yang dipakai transaksi — EIP-3529)
 
 Bandingkan: ADD opcode hanya 3 gas, MSTORE (write to memory) hanya 3 gas
 ```
@@ -650,8 +659,10 @@ TRANSAKSI MASUK:
 │  [2] Jump to transfer() function body in bytecode       │
 │  [3] SLOAD sender balance from storage (2100 gas)       │
 │  [4] Check: balance >= amount (stack operation)         │
-│  [5] SSTORE: reduce sender balance (20000 gas)          │
-│  [6] SSTORE: increase recipient balance (2900 gas)      │
+│  [5] SSTORE: reduce sender balance (2900 gas — warm,    │
+│      nonzero → nonzero)                                 │
+│  [6] SSTORE: increase recipient balance (22100 gas —    │
+│      cold 2100 + 0 → nonzero 20000, Bob belum punya)    │
 │  [7] MSTORE: prepare event data in memory              │
 │  [8] LOG3: emit Transfer event                          │
 │  [9] STOP                                               │
@@ -710,7 +721,7 @@ Selain itu, `Version A` membuat local variable `string memory uri` yang tidak pe
 
 Untuk string dengan panjang > 31 bytes, butuh setidaknya 2+ SLOAD per elemen. Untuk string pendek (≤ 31 bytes), bisa masuk dalam 1 slot.
 
-**c)** Jika user request 500 tokenURIs dengan rata-rata string 50 bytes per URI, ini bisa mengkonsumsi gas yang melebihi block gas limit (30 juta gas). Transaksi akan selalu revert. Ini adalah pattern yang perlu dipecah menjadi batch yang lebih kecil, atau diimplementasikan via off-chain indexer + on-chain verification.
+**c)** 500 tokenURI × ≥3 SLOAD cold (~2.100 gas) + biaya memory yang kuadratik → jutaan gas. Fungsi `view` yang dipanggil via `eth_call` tidak membayar gas, tetapi RPC node punya **batas gas & timeout** per call, sehingga panggilan bisa gagal; jika dipanggil dari contract lain di dalam transaksi, biayanya nyata dan bisa melebihi block gas limit. Ini adalah pattern yang perlu dipecah menjadi batch yang lebih kecil, atau diimplementasikan via off-chain indexer + on-chain verification.
 
 </details>
 
@@ -799,6 +810,7 @@ Slot 4: [00 00 00 ... g (32 bytes) ...]
 - Variabel di-pack ke dalam slot yang sama jika ukurannya muat (total ≤ 32 bytes) dan urutan deklarasinya berurutan.
 - Jika variabel berikutnya tidak muat, slot baru dimulai.
 - `uint256`, `bytes32` selalu mengisi slot penuh (tidak bisa di-pack bersama variabel lain).
+- Struct dan array **selalu memulai slot baru**, dan variabel setelahnya juga memulai slot baru.
 
 ---
 
@@ -823,7 +835,7 @@ contract V2 {
 
 Jika proxy contract mengarah ke V1, lalu di-upgrade ke V2 tanpa memperhatikan storage layout, membaca `totalSupply` via V2 akan membaca nilai yang tersimpan di slot 0 — yang sekarang di-interpretasikan sebagai `address owner`. Data rusak total.
 
-> **Ini adalah salah satu bug yang paling sering terjadi dalam upgradeable contracts — dan akan kita pelajari mendalam di Phase 8 (Security) dan Phase `upgradeable-contracts`.**
+> **Ini adalah salah satu bug yang paling sering terjadi dalam upgradeable contracts — dan akan kita pelajari mendalam di Phase 8 (Security) dan Phase 13 C1 (Proxy & Upgradeability).**
 
 ---
 
@@ -858,8 +870,8 @@ uint256[] public myArray;  // berada di slot k
 // Panjang array disimpan di slot k:
 length = storage[k]
 
-// Elemen array disimpan mulai dari:
-base_slot = keccak256(k)
+// Elemen array disimpan mulai dari (k di-encode sebagai 32 byte):
+base_slot = keccak256(abi.encode(k))
 
 // Element ke-i:
 slot_for_element_i = keccak256(k) + i
@@ -886,12 +898,11 @@ struct UserBad {
     uint256 balance;  // slot X+2  (32 bytes)
 }
 
-// ✅ EFISIEN — hanya 2 slot storage untuk 1 struct
-struct UserGood {
+// ⚠️ MENGUBAH URUTAN SAJA TIDAK CUKUP — tetap 3 slot
+struct UserReordered {
     uint256 id;       // slot X   (32 bytes)
-    uint256 balance;  // slot X+1 (32 bytes)
-    bool    active;   // slot X+1 bisa di-pack? No, tapi...
-    // Sebenarnya urutannya mempengaruhi packing:
+    uint256 balance;  // slot X+1 (32 bytes, penuh)
+    bool    active;   // slot X+2 (uint256 sebelumnya sudah memenuhi slot)
 }
 
 // ✅✅ OPTIMAL — hanya 2 slot storage
@@ -954,7 +965,7 @@ final_slot = keccak256(abi.encode(0xBob, outer_slot))
 
 **c)** Ya! Anda bisa membaca raw storage menggunakan RPC method `eth_getStorageAt`:
 ```javascript
-const response = await fetch("https://rpc.ankr.com/eth", {
+const response = await fetch("https://ethereum-rpc.publicnode.com", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -1022,8 +1033,11 @@ Ketika frontend ingin memanggil `transfer(0xBob, 100 * 10^18)`:
 LANGKAH 1: Hitung function selector
   signature = "transfer(address,uint256)"
   selector  = bytes4(keccak256(signature))
-            = bytes4(0xddf252ad...) 
+            = bytes4(0xa9059cbb2ab09eb219583f4a59a5d0623ade346d962bcd4e46b11da047c9049b)
             = 0xa9059cbb
+
+  ⚠️ Jangan tertukar dengan 0xddf252ad... — itu keccak256("Transfer(address,address,uint256)"),
+     topic EVENT Transfer (lihat bagian Events di bawah), bukan selector fungsi transfer.
 
 LANGKAH 2: ABI encode arguments
   arg1 (address 0xBob): 
@@ -1187,8 +1201,8 @@ function placeBid() external payable {
 <summary>💡 Pembahasan</summary>
 
 **a)** Gas cost estimation:
-- **Pilihan A (Storage)**: Setiap `push` baru menuliskan 3 storage slot baru (bidder, amount, timestamp). Minimum: 3 × 20,000 (new slot) = ~60,000 gas per bid. Untuk 1000 bid: ~60,000,000 gas — ini melebihi block gas limit!
-- **Pilihan B (Event)**: `LOG3` (3 topics + data) ≈ 375 + (topics × 375) + (data_size × 8) gas. Untuk Bid event: sekitar 1,500-3,000 gas per bid. Untuk 1000 bid: ~2,000,000 gas — jauh lebih feasible.
+- **Pilihan A (Storage)**: Setiap `push` menulis 3 slot baru (bidder, amount, timestamp) **plus** memperbarui panjang array. Minimum ≈ 3 × 22.100 (slot baru, cold) + 5.000 ≈ **~70.000 gas per bid**. Untuk 1000 bid (tersebar di 1000 transaksi): total ~70 juta gas yang dibayar para bidder.
+- **Pilihan B (Event)**: `BidPlaced` punya 1 parameter `indexed` → `LOG2` (topic signature + bidder) dengan 64 byte data: 375 + 2 × 375 + 64 × 8 ≈ **~1.600 gas per bid** (+ sedikit memory). Untuk 1000 bid: ~1,6 juta gas — sekitar 40× lebih murah.
 
 **b)** Untuk UI frontend: **Pilihan B (Events)** lebih efisien. Frontend/indexer bisa query event logs menggunakan `eth_getLogs` RPC call tanpa mengeluarkan gas. Event juga bisa di-filter by address, block range, dll.
 
@@ -1237,8 +1251,8 @@ Bangun sebuah **EVM Storage Inspector** — tool CLI yang memungkinkan Anda memb
 5. **Feature 4 — ABI Decoder**: Decode function selector dari calldata menggunakan database 4bytes publik.
 
 ## Tech Stack
-- Node.js (native fetch, no external dependencies)
-- Public RPC: `https://rpc.ankr.com/eth`
+- Node.js (native fetch). Satu-satunya dependency yang diizinkan: library Keccak-256 (`viem` atau `@noble/hashes`) — Node.js tidak punya Keccak bawaan.
+- Public RPC: `https://ethereum-rpc.publicnode.com`
 - [4bytes.directory](https://www.4byte.directory/api/v1/signatures/?hex_signature=0xa9059cbb) — Public API untuk decode function selectors
 
 ## Hints
@@ -1251,7 +1265,7 @@ async function readStorageSlot(contractAddress, slotNumber) {
   // slotNumber perlu di-convert ke hex dengan padding 32 bytes
   const slotHex = "0x" + BigInt(slotNumber).toString(16).padStart(64, "0");
   
-  const response = await fetch("https://rpc.ankr.com/eth", {
+  const response = await fetch("https://ethereum-rpc.publicnode.com", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1272,24 +1286,22 @@ async function readStorageSlot(contractAddress, slotNumber) {
 <summary>Hint 2: Kalkulasi mapping slot</summary>
 
 ```javascript
-import { createHash } from "crypto";
+// ⚠️ JANGAN pakai createHash("sha3-256") dari Node.js — itu SHA3 versi NIST,
+//    BUKAN Keccak-256 milik Ethereum (lihat Phase 3 Soal 2). Hasilnya akan salah.
+import { keccak256, encodeAbiParameters } from "viem";   // npm install viem
 
 function calculateMappingSlot(key, baseSlot) {
-  // ABI encode: key (padded 32 bytes) + baseSlot (padded 32 bytes)
-  const keyPadded = key.toLowerCase().replace("0x", "").padStart(64, "0");
-  const slotPadded = BigInt(baseSlot).toString(16).padStart(64, "0");
-  
-  const encoded = keyPadded + slotPadded;
-  
-  const hash = createHash("sha3-256")  // Note: gunakan library keccak yang tepat
-    .update(Buffer.from(encoded, "hex"))
-    .digest("hex");
-  
-  return "0x" + hash;
+  // slot = keccak256(abi.encode(key, baseSlot))
+  return keccak256(
+    encodeAbiParameters(
+      [{ type: "address" }, { type: "uint256" }],
+      [key, BigInt(baseSlot)]
+    )
+  );
 }
 
-// Atau lebih baik, gunakan library 'ethers' atau 'viem' untuk keccak256 yang benar:
-// import { keccak256, pad, concat } from 'viem'
+// Verifikasi hasil Anda dengan Foundry:
+//   cast index address <key> <baseSlot>
 ```
 
 </details>
@@ -1317,6 +1329,22 @@ async function decodeFunctionSelector(selector) {
 
 </details>
 
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Feature 1 (direct slot read) + Feature 3 (EOA vs contract) |
+| 🟡 **Extended** — disarankan | Feature 2 (mapping slot calculator) dengan **Keccak-256** yang benar |
+| 🔴 **Stretch** — untuk portfolio | Feature 4 (decode selector) + dukungan dynamic array & nested mapping |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] Nilai slot hasil tool Anda **sama** dengan `cast storage <address> <slot>` untuk 3 slot berbeda
+- [ ] Slot mapping hasil Feature 2 **sama** dengan `cast index address <key> <baseSlot>` (wajib jika mengerjakan Extended)
+- [ ] Address EOA dan address contract terklasifikasi benar (uji dengan address anvil #0 dan contract yang Anda deploy)
+- [ ] Tidak memakai SHA3-256 bawaan Node untuk Keccak — jelaskan perbedaannya di Notes (lihat Phase 3 Soal 2)
+
+
 ---
 
 # 🏆 Challenge: "Smart Contract Reverse Engineer"
@@ -1326,7 +1354,63 @@ async function decodeFunctionSelector(selector) {
 ## Misi
 Anda diberikan sebuah contract address yang tidak diketahui (unverified source code) di Ethereum Sepolia testnet.
 
-**Target contract**: Deploy contract berikut ke Sepolia testnet menggunakan Remix IDE, salin address-nya, lalu coba "reverse engineer" contract tersebut tanpa melihat source code — hanya dari raw bytecode dan storage.
+**Target contract**: contract `Mystery` di bawah. Cara terbaik: **minta teman** men-deploy-nya ke Sepolia (atau ke `anvil` lokal) dan memberi Anda address-nya saja, lalu "reverse engineer" contract tersebut tanpa melihat source code — hanya dari raw bytecode dan storage. Jika belajar sendiri, deploy dengan Remix/`forge create` **tanpa membaca source-nya** (salin-tempel saja), dengan argumen constructor `keccak256` dari sebuah kata rahasia pilihan Anda.
+
+<details>
+<summary>🔒 Source contract target — hanya untuk yang men-deploy (jangan dibaca sebelum laporan selesai)</summary>
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+contract Mystery {
+    address private keeper;                      // slot 0 (20 byte)
+    uint64  private lastPing;                    // slot 0 (packed, 8 byte)
+    bool    private locked;                      // slot 0 (packed, 1 byte)
+    uint256 private counter;                     // slot 1
+    mapping(address => uint256) private credits; // slot 2 (seed)
+    bytes32 private secretHash;                  // slot 3
+
+    constructor(bytes32 _secretHash) payable {
+        keeper     = msg.sender;
+        lastPing   = uint64(block.timestamp);
+        locked     = true;
+        secretHash = _secretHash;
+    }
+
+    function ping() external {
+        counter += 1;
+        lastPing = uint64(block.timestamp);
+        credits[msg.sender] += 1;
+    }
+
+    function creditsOf(address who) external view returns (uint256) {
+        return credits[who];
+    }
+
+    function unlock(string calldata answer) external {
+        require(keccak256(bytes(answer)) == secretHash, "wrong answer");
+        locked = false;
+    }
+
+    function withdraw() external {
+        require(!locked, "locked");
+        require(msg.sender == keeper, "not keeper");
+        payable(keeper).transfer(address(this).balance);
+    }
+}
+```
+
+Deploy contoh (anvil):
+
+```bash
+forge create Mystery.sol:Mystery --rpc-url http://127.0.0.1:8545 \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+  --broadcast --value 0.1ether \
+  --constructor-args $(cast keccak "kata-rahasia")
+```
+
+</details>
 
 *Atau gunakan existing contract yang source code-nya tidak verified di Etherscan.*
 
@@ -1345,6 +1429,22 @@ File `reverse-engineering-report.md` berisi:
 - Fungsi yang ditemukan (selector + decoded signature)
 - Analisis storage (apa isi setiap slot)
 - Kesimpulan: Apa yang dilakukan contract ini?
+
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Langkah 1–5: bytecode, selector, decode, storage slot 0–3, hipotesis |
+| 🟡 **Extended** — disarankan | Langkah 6–7: verifikasi via `eth_call` + Reverse Engineering Report |
+| 🔴 **Stretch** — untuk portfolio | Bandingkan hasil Anda dengan decompiler (misal Heimdall / Dedaub) dan catat apa yang tidak bisa Anda temukan secara manual |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] Semua selector publik contract target ditemukan (cek: jumlahnya sama dengan fungsi `external`/`public` di source yang dibuka **setelah** selesai)
+- [ ] Isi slot 0–3 dijelaskan dengan tipe datanya (address / uint / bool yang di-pack)
+- [ ] Hipotesis diverifikasi dengan minimal 2 panggilan `eth_call` yang hasilnya sesuai prediksi
+- [ ] `reverse-engineering-report.md` berisi keempat bagian di *Output yang Diharapkan*
+
 
 ---
 
@@ -1418,7 +1518,7 @@ git commit -m "feat: add smart contract reverse engineering report (Phase 2 chal
 ### Untuk Eksplorasi Lebih Lanjut
 - [Noxx: EVM Deep Dives Series](https://noxx.substack.com/p/evm-deep-dives-the-path-to-shadowy)
 - [Ethereum Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf) — Spesifikasi formal EVM
-- [OpenZeppelin: EVM Puzzles](https://github.com/fvictorio/evm-puzzles) — Teka-teki interaktif untuk memahami EVM bytecode
+- [EVM Puzzles (fvictorio)](https://github.com/fvictorio/evm-puzzles) — Teka-teki interaktif untuk memahami EVM bytecode
 
 ---
 

@@ -100,6 +100,8 @@ WEB2 FUNDAMENTAL (Laravel, React, Mobile, DevOps)
 WEB3 / SECURITY ENGINEER
 ```
 
+> 🔀 **Urutan belajar yang disarankan: 4 → 6 → 5 → 7.** Phase 5 (Smart Contract Development) memakai Foundry untuk test & deployment, sehingga Phase 6 (Foundry Tooling, prerequisite-nya hanya Phase 4) sebaiknya diselesaikan lebih dulu. Penomoran folder tetap mengikuti roadmap konseptual di atas.
+
 ---
 
 ### Detailed Phase Breakdown
@@ -217,15 +219,22 @@ WEB3 / SECURITY ENGINEER
 
 ---
 
-## 📅 Timeline (6 - 9 Months Framework)
+## 📅 Timeline (Dua Jalur)
 
-- **Month 1**: Blockchain Fundamentals, Ethereum & EVM Internals, Cryptography & Wallets.
-- **Month 2**: Solidity Language Mastery, EVM Storage Layout, Basic Smart Contracts (Projects L1-L4).
-- **Month 3**: Foundry Deep Dive, Unit & Fuzz Testing, OpenZeppelin, Smart Contract Security Fundamentals.
-- **Month 4**: Web3 Frontend (Viem, Wagmi, Next.js, RainbowKit), Building Full DApps.
-- **Month 5**: Web3 Backend, RPC Listeners, Event Indexing, The Graph, PostgreSQL.
-- **Month 6**: DeFi Mechanics, DEX/AMM, Lending, Chainlink Oracles, Flash Loans.
-- **Month 7+**: Layer 2 (Base/Arbitrum), Account Abstraction (ERC-4337), MEV, Security Auditing.
+Estimasi dihitung dari beban tiap fase (lihat header README fase). Pilih jalur yang realistis untuk Anda — **konsistensi lebih penting daripada kecepatan**.
+
+| Blok | Phase | 🚀 Intensif (~6 jam/hari kerja, Core + Extended) | 🐢 Paruh Waktu (~10 jam/minggu, Core) |
+|---|---|:---:|:---:|
+| Fondasi | 1 → 2 → 3 | Bulan 1 | Bulan 1–3 |
+| Solidity & Tooling | 4 → 6 → 5 | Bulan 2–3 | Bulan 3–7 |
+| Testing & Security | 7 → 8 | Bulan 4–5 | Bulan 7–10 |
+| Full-Stack DApp | 9 → 10 | Bulan 5–7 | Bulan 10–14 |
+| DeFi | 11 | Bulan 7–8 | Bulan 12–17 |
+| Scaling & Advanced | 12 → 13 | Bulan 8–11 | Bulan 15–20 |
+
+- **Stretch** tidak dihitung dalam estimasi di atas — kerjakan saat membangun portfolio atau setelah roadmap selesai.
+- Jika tertinggal lebih dari 2 minggu dari rencana: turunkan target ke **Core saja** untuk fase tersebut, jangan melewati fase.
+- Roadmap awal repo ini menargetkan 6–9 bulan; setelah beban latihan dihitung ulang, angka itu hanya realistis untuk jalur intensif **Core saja**.
 
 ---
 
@@ -261,5 +270,66 @@ Repository ini menerapkan **Conventional Commits**:
 ├── 11-tokenomics-and-defi/             # Phase 11
 ├── 12-layer-2/                         # Phase 12
 ├── 13-advanced-web3/                   # Phase 13
-└── projects/                           # Milestone Projects (L1 - L10)
+└── projects/                           # Indeks Milestone Projects (L1 - L10)
 ```
+
+---
+
+## 🧭 Cara Menggunakan Repository Ini
+
+Setiap `README.md` fase memakai struktur yang sama:
+
+```text
+🎯 Objective → 📋 Prerequisites → ⚙️ Setup → 📚 Concepts Overview
+→ C1..Cn (materi + Latihan) → 📝 Mini Project → 🏆 Challenge
+→ 📁 GitHub Task → 🧠 Knowledge Check → 📊 Progress Tracker
+→ 🔗 Resources → 📝 What I Learned → 🗒️ Notes
+```
+
+| Elemen | Cara Memakai |
+|---|---|
+| **Latihan konseptual** | Jawab sendiri dulu, baru buka `💡 Pembahasan` (collapsible) |
+| **Latihan hands-on** | Sengaja tanpa jawaban — buktikan dengan kode/test Anda sendiri |
+| **`// TODO (latihan)`** di contoh kode | Bagian yang harus Anda lengkapi |
+| **Knowledge Check** | Tanpa kunci jawaban — jawab di **🗒️ Notes** |
+| **Progress Tracker** | Centang `[x]` hanya setelah benar-benar selesai |
+| **What I Learned / Notes** | Ditulis oleh Anda, bukan template |
+
+**🎚️ Sistem Tingkat** — setiap Mini Project & Challenge dibagi tiga:
+
+| Tingkat | Aturan |
+|---|---|
+| 🟢 **Core** | **Wajib** sebelum lanjut ke fase berikutnya. Lulus jika semua *✅ Kriteria Lulus (Core)* tercentang |
+| 🟡 **Extended** | Disarankan — memperdalam pemahaman, termasuk dalam estimasi jalur Intensif |
+| 🔴 **Stretch** | Opsional — untuk portfolio atau setelah roadmap selesai |
+
+**✅ Kriteria lulus** — setiap latihan hands-on punya daftar *✅ Selesai jika* yang bisa Anda verifikasi sendiri (test hijau, output yang cocok dengan `cast`/Etherscan, dsb.). Jangan centang Progress Tracker sebelum semua kriteria terpenuhi.
+
+**Konvensi kode:**
+- Phase 5 memakai pola **Test-Driven**: `src/` berisi *starter* (antarmuka lengkap, body fungsi `revert NotImplemented()`), `test/` berisi test sebagai spesifikasi, dan jawaban ada di `05-smart-contract-development/solutions/` (`FOUNDRY_PROFILE=solutions forge test` — hanya setelah mencoba sendiri).
+- Phase lain: kode Anda ditulis di subfolder **`lab/`** (`forge init lab --no-git`) agar `README.md` materi tidak tertimpa. Phase 9 & 10 memakai subfolder `dapp/` dan `indexer/`.
+- Dependencies (`lib/`), build output, dan `.env` di-ignore oleh `.gitignore` root — install ulang dengan `forge install` sesuai Setup tiap fase.
+
+---
+
+## 📈 Progress Saya
+
+> Perbarui tabel ini setiap menyelesaikan fase. Detail per konsep ada di **📊 Progress Tracker** README masing-masing fase.
+
+| Urutan | Phase | Bulan (Intensif) | Materi | Latihan | Mini Project | Challenge | Selesai |
+|:---:|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 1 | [01 — Blockchain Fundamentals](01-blockchain-fundamentals/README.md) | 1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 2 | [02 — Ethereum & EVM](02-ethereum-and-evm/README.md) | 1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 3 | [03 — Cryptography & Wallets](03-cryptography-and-wallets/README.md) | 1 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 4 | [04 — Solidity Fundamentals](04-solidity-fundamentals/README.md) | 2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 5 | [06 — Foundry Tooling *(kerjakan sebelum 05)*](06-foundry-tooling/README.md) | 2 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 6 | [05 — Smart Contract Development](05-smart-contract-development/README.md) | 2–3 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 7 | [07 — Smart Contract Testing](07-smart-contract-testing/README.md) | 4 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 8 | [08 — Smart Contract Security](08-smart-contract-security/README.md) | 4–5 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 9 | [09 — Web3 Frontend](09-web3-frontend/README.md) | 5–6 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 10 | [10 — Web3 Backend & Indexing](10-web3-backend-and-indexing/README.md) | 6–7 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 11 | [11 — Tokenomics & DeFi](11-tokenomics-and-defi/README.md) | 7–8 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 12 | [12 — Layer 2 & Scaling](12-layer-2/README.md) | 8–9 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 13 | [13 — Advanced Web3](13-advanced-web3/README.md) | 9–11 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+
+Legenda: ⬜ belum · 🟨 sedang dikerjakan · ✅ selesai

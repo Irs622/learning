@@ -2,7 +2,7 @@
 
 > **Level**: 2 — Technical Fundamentals with Code
 > **Phase**: 3 of 13
-> **Estimated Time**: 7–10 hari
+> **Estimated Time**: 🚀 Intensif 7–10 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 3–4 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [02-ethereum-and-evm](../02-ethereum-and-evm/README.md) ✅
 
 ---
@@ -32,8 +32,8 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 
 | # | Konsep | Status |
 |:---:|---|:---:|
-| **C1** | [Hash Functions: Keccak-256 & SHA-256](#c1-hash-functions-keccak-256--sha-256) | ⬜ |
-| **C2** | [Elliptic Curve Cryptography (ECC & secp256k1)](#c2-elliptic-curve-cryptography-ecc--secp256k1) | ⬜ |
+| **C1** | [Hash Functions: Keccak-256 & SHA-256](#c1-hash-functions--keccak-256--sha-256) | ⬜ |
+| **C2** | [Elliptic Curve Cryptography (ECC & secp256k1)](#c2-elliptic-curve-cryptography--ecc--secp256k1) | ⬜ |
 | **C3** | [Private Key → Public Key → Ethereum Address](#c3-private-key--public-key--ethereum-address) | ⬜ |
 | **C4** | [Digital Signatures (ECDSA) & ecrecover](#c4-digital-signatures-ecdsa--ecrecover) | ⬜ |
 | **C5** | [HD Wallets, Seed Phrases & BIP Standards](#c5-hd-wallets-seed-phrases--bip-standards) | ⬜ |
@@ -82,8 +82,9 @@ Mudah: input → hash(input) = output
 Mustahil: output → ??? (tidak bisa menemukan input)
 
 Contoh:
-  keccak256("password123") = 0x57091b8b...
-  Dari 0x57091b8b... → tidak bisa tahu inputnya "password123"
+  keccak256("password123") = 0x0d45e19766c0cadfe3af48b801102a9de4337ee41088e3561d9f1e9897aeeeae
+  Dari 0x0d45e197... → tidak bisa menghitung balik inputnya
+  (⚠️ tetapi password umum bisa DITEBAK lewat dictionary attack — lihat Soal 1c)
 ```
 
 Implikasi di Ethereum: Anda bisa mempublikasikan hash dari sebuah data tanpa mengungkap data aslinya (dipakai untuk commit-reveal schemes).
@@ -95,9 +96,10 @@ Mustahil: menemukan A ≠ B sehingga hash(A) = hash(B)
 
 Output space: 2^256 kemungkinan nilai
 = 115,792,089,237,316,195,423,570,985,008,687,907,853,269,984,665,640,564,039,457,584,007,913,129,639,936
-                               ↑ angka ini lebih besar dari jumlah atom di alam semesta yang diamati
+                               ↑ ≈ 1,16 × 10^77 — mendekati jumlah atom di alam semesta teramati (~10^80)
 
-Probabilitas collision acak ≈ 1 / 2^256 ≈ 0 (secara praktis mustahil)
+Probabilitas dua input acak tertentu bertabrakan ≈ 1 / 2^256.
+Mencari collision APA PUN butuh ~2^128 percobaan (birthday bound) — tetap mustahil secara praktis.
 ```
 
 Implikasi: Dua transaksi berbeda tidak akan pernah menghasilkan hash yang sama. Kita bisa menggunakan hash sebagai **identifier unik** yang dapat dipercaya.
@@ -106,9 +108,10 @@ Implikasi: Dua transaksi berbeda tidak akan pernah menghasilkan hash yang sama. 
 
 ```javascript
 // Perubahan 1 bit pada input → seluruh output berubah
-keccak256("Ethereum")  = 0x3b82de92...f3a1
-keccak256("ethereum")  = 0x9c22ff5f...4d3b  // lowercase 'e' → SEMUA berubah!
-keccak256("Ethereum!") = 0x7c8f4a21...8b90  // tambah '!' → SEMUA berubah!
+keccak256("Ethereum")  = 0x564ccaf7594d66b1...711cd0e2
+keccak256("ethereum")  = 0x541111248b45b7a8...5a255155  // lowercase 'e' → SEMUA berubah!
+keccak256("Ethereum!") = 0xb5b5b97fafd9855e...b630ee0a  // tambah '!' → SEMUA berubah!
+// Cek sendiri: cast keccak "Ethereum"
 ```
 
 Implikasi: Di blockchain, jika seseorang mengubah satu angka di transaksi lama, hash blok tersebut berubah total, membatalkan seluruh rantai blok berikutnya.
@@ -550,8 +553,9 @@ Sebagai perbandingan: usia alam semesta adalah ~1.38 × 10^10 tahun. Jadi brutef
 
 ```javascript
 // keypair-generator.js
-// Menggunakan 'noble-secp256k1' (library ringan & diaudit)
-// Install: npm install @noble/secp256k1
+// Menggunakan '@noble/secp256k1' (library ringan & diaudit)
+// Install (versi di-pin — API & path import berubah di major version berikutnya):
+//   npm install @noble/secp256k1@2 @noble/hashes@1
 
 import * as secp256k1 from "@noble/secp256k1";
 import { createHash } from "crypto";
@@ -593,8 +597,8 @@ function toChecksumAddress(address) {
   
   let checksummed = "0x";
   for (let i = 0; i < address.length; i++) {
-    // Jika bit ke-i dari hash adalah 1 → uppercase
-    // Jika bit ke-i dari hash adalah 0 → lowercase
+    // Jika digit hex (nibble) ke-i dari hash ≥ 8 → uppercase
+    // Jika < 8 → lowercase
     if (parseInt(hashHex[i], 16) >= 8) {
       checksummed += address[i].toUpperCase();
     } else {
@@ -642,13 +646,13 @@ EIP-55 menambahkan checksum melalui kapitalisasi:
 Cara kerja EIP-55:
 1. Ambil address lowercase: "5aaeb6053f3e..."
 2. Hitung keccak256 dari string tersebut
-3. Untuk setiap karakter hex a-f:
-   - Jika bit di hash = 1 → UPPERCASE
-   - Jika bit di hash = 0 → lowercase
+3. Untuk setiap karakter hex a-f di posisi i:
+   - Jika digit hex ke-i dari hash ≥ 8 → UPPERCASE
+   - Jika < 8 → lowercase
 4. Karakter 0-9 tidak berubah
 ```
 
-**Validasi**: Jika Anda mengetik address yang salah, probabilitas deteeksi typo ~99.986% karena kapitalisasi harus pas persis.
+**Validasi**: Rata-rata address memiliki ~15 bit checksum, sehingga typo acak lolos tanpa terdeteksi hanya dengan peluang ~0,0247% (deteksi ~99,975%, menurut spesifikasi EIP-55).
 
 ---
 
@@ -709,7 +713,7 @@ Tool populer: `vanity-eth`, `profanity2` (tapi WASPADA — lihat poin c!)
 
 **c)** **YA, ada risiko signifikan!**
 - Tool `profanity` (bukan `profanity2`) punya vulnerability: karena menggunakan 32-bit seed untuk inisialisasi random, ruang pencarian sebenarnya hanya 2^32 ≈ 4 miliar kemungkinan — jauh lebih kecil dari 2^256. Attacker bisa brute force semua kemungkinan seed dan mencuri dana dari vanity address yang di-generate oleh tool ini. **Lebih dari $160 juta hilang** akibat bug ini.
-- `0x00...00` (null address) adalah address "dead" — tidak ada Private Key yang valid untuk address ini (karena derivation memerlukan langkah matematika yang tidak mungkin menghasilkan address ini secara natural). Token yang dikirim ke null address hilang selamanya.
+- `0x00...00` (null address) dianggap address "dead": untuk memiliki private key-nya, seseorang harus menemukan public key yang hash Keccak-nya berakhiran 20 byte nol — setara memecahkan *preimage* Keccak-256, yang secara praktis mustahil. Karena itu token yang dikirim ke sana dianggap hilang selamanya (dan banyak contract sengaja menolak `address(0)` sebagai penerima).
 
 </details>
 
@@ -827,8 +831,9 @@ Ketika DApp meminta Anda menandatangani pesan (bukan transaksi), Ethereum menggu
 
 ```text
 TANPA prefix (berbahaya!):
-  sign(keccak256("Transfer 100 ETH to attacker"))
-  → Bisa disalahgunakan untuk mensimulasikan calldata transaksi!
+  sign(hash32)  ← hash 32 byte sembarang yang diberikan DApp
+  → hash itu bisa saja hash dari TRANSAKSI Ethereum yang valid;
+    menandatanganinya sama dengan menandatangani transaksi tersebut!
 
 DENGAN EIP-191 prefix (aman):
   prefixedMessage = "\x19Ethereum Signed Message:\n" + len(message) + message
@@ -860,16 +865,19 @@ EIP-191 (unstructured):
   → User tidak tahu apa yang dia tandatangani!
 
 EIP-712 (typed/structured):
-  User melihat di MetaMask:
+  User melihat di MetaMask (contoh: Permit EIP-2612):
   ┌─────────────────────────────────────┐
-  │ Sign in to CoolDApp                 │
-  │ Domain: app.cooldapp.com            │
-  │ Version: 1                          │
-  │ Wallet: 0xYourAddress               │
-  │ Nonce: 4829abc                      │
-  │ Expiry: Dec 31, 2026                │
+  │ Permit — USD Coin (chainId 1)       │
+  │ owner:    0xYourAddress             │
+  │ spender:  0xUniswapRouter...        │
+  │ value:    100000000 (100 USDC)      │
+  │ nonce:    3                         │
+  │ deadline: 1767225599                │
   └─────────────────────────────────────┘
-  → User tahu persis apa yang ditandatangani!
+  → User melihat setiap field bertipe, bukan hex acak!
+
+  (Catatan: "Sign-In with Ethereum" / EIP-4361 BUKAN EIP-712 —
+   SIWE memakai personal_sign (EIP-191) dengan teks terstruktur.)
 ```
 
 EIP-712 sangat penting untuk **gasless transactions** (meta-transactions), **Permit (EIP-2612)** di ERC-20, dan **NFT marketplace** (sign offer tanpa on-chain transaction).
@@ -893,42 +901,38 @@ Ini adalah salah satu vulnerability paling berbahaya yang berhubungan dengan sig
 
 **Solusi**:
 ```solidity
+interface IERC20 {
+    function transfer(address to, uint256 amount) external returns (bool);
+}
+
 contract SafeRewardClaimer {
-    mapping(bytes32 => bool) public usedSignatures;  // Track used signatures
-    uint256 public chainId;
-    address public signer;
-    
-    function claimReward(
-        uint256 amount,
-        uint256 nonce,          // Unique per claim
-        bytes memory signature
-    ) external {
+    IERC20  public immutable token;
+    address public immutable signer;
+    mapping(bytes32 => bool) public usedMessages; // lacak MESSAGE, bukan bytes signature
+
+    constructor(IERC20 _token, address _signer) {
+        token  = _token;
+        signer = _signer;
+    }
+
+    function claimReward(uint256 amount, uint256 nonce, uint8 v, bytes32 r, bytes32 s) external {
         // Konstruksi message hash (termasuk chainId dan contract address!)
-        bytes32 messageHash = keccak256(abi.encodePacked(
+        bytes32 messageHash = keccak256(abi.encode(
             msg.sender,
             amount,
-            nonce,
-            chainId,            // Cegah cross-chain replay
-            address(this)       // Cegah cross-contract replay
+            nonce,          // unik per claim
+            block.chainid,  // dibaca SAAT verifikasi → tetap aman setelah chain fork
+            address(this)   // cegah cross-contract replay
         ));
-        
-        bytes32 ethSignedHash = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            messageHash
-        ));
-        
-        // Cek signature belum pernah digunakan
-        require(!usedSignatures[ethSignedHash], "Signature already used");
-        
-        // Verify signer
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+
+        require(!usedMessages[ethSignedHash], "Already used");
+
         address recovered = ecrecover(ethSignedHash, v, r, s);
-        require(recovered == signer, "Invalid signature");
-        
-        // Mark sebagai used (sebelum transfer — CEI pattern!)
-        usedSignatures[ethSignedHash] = true;
-        
-        // Transfer reward
-        IERC20(token).transfer(msg.sender, amount);
+        require(recovered != address(0) && recovered == signer, "Invalid signature");
+
+        usedMessages[ethSignedHash] = true;                   // Effects sebelum Interaction (CEI)
+        require(token.transfer(msg.sender, amount), "Transfer failed");
     }
 }
 ```
@@ -1054,11 +1058,6 @@ contract SafeAirdrop {
     IERC20 public token;
     
     mapping(address => bool) public hasClaimed; // Track per user
-    uint256 public chainId;
-    
-    constructor() {
-        chainId = block.chainid;
-    }
     
     function claimAirdrop(
         uint256 amount,
@@ -1073,7 +1072,8 @@ contract SafeAirdrop {
         bytes32 message = keccak256(abi.encodePacked(
             msg.sender,
             amount,
-            chainId,        // Cegah cross-chain replay
+            block.chainid,  // Cegah cross-chain replay — baca saat verifikasi, JANGAN di-cache
+                            // di constructor (setelah chain fork, nilai cache jadi usang)
             address(this)   // Cegah cross-contract replay
         ));
         bytes32 ethMessage = keccak256(abi.encodePacked(
@@ -1094,6 +1094,8 @@ contract SafeAirdrop {
 **d)** Vulnerabilitas tambahan:
 - **`ecrecover` tidak revert pada input invalid** — jika signature malformed, `ecrecover` mengembalikan `address(0)`. Jika `owner` entah bagaimana adalah `address(0)`, semua claim akan berhasil tanpa signature valid.  Tambahkan: `require(recovered != address(0), "Invalid signature format");`
 - **Tidak ada event logging**: Tidak ada `emit AirdropClaimed(msg.sender, amount)` — membuat audit dan indexing sulit.
+- **Return value `transfer` tidak dicek**: token yang mengembalikan `false` (bukan revert) membuat claim "berhasil" tanpa token terkirim — gunakan `SafeERC20` (Phase 7 C5, Phase 8).
+- **Gunakan library yang teruji**: di production, pakai `ECDSA.recover` + `EIP712` dari OpenZeppelin (menolak signature *malleable* dan membangun domain separator dengan benar — Phase 8 C6).
 
 </details>
 
@@ -1160,12 +1162,12 @@ PROSES BIP-39:
    132 bits / 11 bits = 12 chunks
 
 5. Map setiap 11-bit chunk ke kata dari wordlist BIP-39 (2048 kata):
-   chunk 0x7F2 (decimal: 2034) → "zoo"
-   chunk 0x2AA (decimal: 682)  → "jacket"
+   entropy 0x7f2a... → 11 bit pertama = 01111111001 (desimal 1017) → kata ke-1017 = "left"
+   (acuan: indeks 0 = "abandon", indeks 2047 = "zoo")
    ...
 
 6. Hasilnya: 12 seed words
-   "zoo jacket nature thunder ..."
+   "left ..."
 ```
 
 **BIP-39 Wordlist**: 2048 kata Inggris yang dipilih dengan seksama (mudah dibedakan satu sama lain, tidak ambigu saat dibaca).
@@ -1261,8 +1263,10 @@ METAMASK:
 1. Ambil unsigned transaction dari DApp
 2. Tentukan Private Key untuk address yang aktif:
    → HD derive: m/44'/60'/0'/0/[active_account_index]
-3. Bentuk message hash:
-   → z = keccak256(RLP(nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0))
+3. Bentuk message hash (transaksi EIP-1559 / tipe-2):
+   → z = keccak256(0x02 ‖ RLP(chainId, nonce, maxPriorityFeePerGas, maxFeePerGas,
+                              gasLimit, to, value, data, accessList))
+   (Transaksi legacy EIP-155: keccak256(RLP(nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0)))
 4. ECDSA Sign:
    → Generate ephemeral nonce k
    → (v, r, s) = ECDSA.sign(z, privateKey)
@@ -1312,7 +1316,7 @@ OUTPUT: List 5 address Ethereum pertama (m/44'/60'/0'/0/0 sampai m/44'/60'/0'/0/
 
 **Gunakan library**:
 ```javascript
-// Install: npm install @scure/bip39 @scure/bip32 @noble/secp256k1 @noble/hashes
+// Install (versi di-pin): npm install @scure/bip39@1 @scure/bip32@1 @noble/secp256k1@2 @noble/hashes@1
 import * as bip39 from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english";
 import { HDKey } from "@scure/bip32";
@@ -1363,7 +1367,7 @@ for (let i = 0; i < 5; i++) {
 
 ### Soal 9 — Security Analysis: Real-World Hack Scenario
 
-Pada tahun 2022, seorang developer kehilangan $120,000 karena:
+**Skenario** (fiktif, tetapi polanya sering terjadi pada kasus nyata) — seorang developer kehilangan seluruh tabungannya karena:
 
 ```text
 1. Developer menemukan script Python di GitHub untuk generate "high-speed" Ethereum vanity address
@@ -1450,6 +1454,23 @@ Commands:
 - Semua operasi kriptografi harus menggunakan library yang sudah diaudit
 - Tambahkan warning jelas: "⚠️ FOR EDUCATIONAL USE ONLY - DO NOT USE GENERATED KEYS ON MAINNET"
 
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Module 1 (hash-tools) + `generate` & `checksum` di Module 2 |
+| 🟡 **Extended** — disarankan | Seluruh Module 2 (HD derivation) + Module 3 (sign/verify/decode-sig) |
+| 🔴 **Stretch** — untuk portfolio | Command tambahan `sign-typed` / `verify-typed` untuk EIP-712 |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] `keccak256 "hello world"` → `0x47173285a8d7341e5e972fc677286384f802f8ef42a5ec5f03bbfa254cb01fad`
+- [ ] `selector "transfer(address,uint256)"` → `0xa9059cbb`
+- [ ] `checksum` menghasilkan output yang sama dengan `cast to-check-sum-address`
+- [ ] *(Extended)* `from-mnemonic` dengan mnemonic anvil `test test test test test test test test test test test junk` → `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`; index 1 → `0x70997970C51812dc3A010C7d01b50e0d17dc79C8`
+- [ ] *(Extended)* Signature dari `sign` bisa diverifikasi oleh `cast wallet verify`, dan sebaliknya
+
+
 ---
 
 # 🏆 Challenge: "Commit-Reveal Scheme" Implementation
@@ -1475,6 +1496,23 @@ Tulis test menggunakan Foundry (setelah Phase 6) atau JavaScript dengan `ethers`
 - Winner determination: Pastikan highest bidder menang.
 - Withdrawal: Semua bidder yang kalah bisa withdraw.
 - Edge case: Apa yang terjadi jika pemenang tidak pernah reveal?
+
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Part A (commit → reveal → finalize) + 5 skenario test Part B |
+| 🟡 **Extended** — disarankan | Edge case: tidak ada yang reveal, pemenang tidak reveal, deposit untuk menyembunyikan nilai bid |
+| 🔴 **Stretch** — untuk portfolio | Aset lelang berupa NFT yang di-escrow + frontend sederhana (setelah Phase 9) |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] Semua test Part B hijau (`forge test`)
+- [ ] Reveal dengan `salt` atau `amount` yang salah → revert dengan custom error
+- [ ] Commit/reveal di luar fasenya → revert
+- [ ] Setiap bidder yang kalah bisa withdraw tepat sebesar depositnya, **sekali** (test withdraw dua kali → revert)
+- [ ] Jelaskan di Notes: mengapa `bidder_address` harus ikut di-hash (petunjuk: Phase 3 C4 — replay)
+
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Level**: 2–3 (Hands-On Tooling Mastery)
 > **Phase**: 6 of 13
-> **Estimated Time**: 7–10 hari
+> **Estimated Time**: 🚀 Intensif 7–10 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 3–4 minggu (Core, ~10 jam/minggu)
 > **Prerequisite**: [04-solidity-fundamentals](../04-solidity-fundamentals/README.md) ✅
 
 ---
@@ -63,7 +63,7 @@ Di smart contract development, ada dua toolchain utama:
 | **Dependency** | Node.js ecosystem (npm) | Git submodules |
 | **Debug** | Console.log style | Stack traces + vm cheatcodes |
 | **Fuzzing** | Manual / external tools | **Built-in fuzz testing** |
-| **Popularitas saat ini** | Legacy, masih banyak dipakai | **Standard modern (2024+)** |
+| **Popularitas saat ini** | Masih sangat banyak dipakai (Hardhat 3 kini juga mendukung test Solidity) | **Standar de facto untuk audit & security research** |
 
 **Kita pilih Foundry** karena:
 1. Test ditulis dalam Solidity — Anda berpikir dalam bahasa contract langsung.
@@ -101,10 +101,10 @@ source ~/.bashrc   # atau ~/.zshrc
 foundryup
 
 # 4. Verifikasi instalasi
-forge --version    # forge 0.2.0 (xxx commit date)
-cast --version     # cast 0.2.0 (xxx)
-anvil --version    # anvil 0.2.0 (xxx)
-chisel --version   # chisel 0.2.0 (xxx)
+forge --version    # forge Version: 1.x.x (stable sejak 2025)
+cast --version
+anvil --version
+chisel --version
 
 # === UPDATE FOUNDRY ===
 foundryup  # Jalankan lagi kapan saja untuk update ke versi terbaru
@@ -123,7 +123,8 @@ source ~/.zshrc
 forge init my-project
 cd my-project
 
-# Atau init di current directory
+# Atau init di current directory (hanya jika folder KOSONG;
+# --force pada folder berisi file akan MENIMPA README.md Anda!)
 forge init .
 
 # Atau init dengan template
@@ -178,7 +179,8 @@ gas_reports = ["*"]            # Report gas usage untuk semua contract saat test
 gas_price = 20000000000        # Default gas price untuk test (20 gwei)
 
 # EVM version
-evm_version = "paris"          # Atau "cancun" untuk fitur terbaru
+evm_version = "paris"          # Default Foundry terbaru mengikuti hard fork terkini (misal "prague"/"osaka");
+                               # pin ke versi yang didukung SEMUA chain target Anda (L2 kadang tertinggal)
 
 # Verbosity level test output
 verbosity = 2                  # 0=minimal, 1=print test names, 2=print logs, 3=traces, 4=full traces
@@ -197,8 +199,8 @@ anvil     = "http://localhost:8545"
 
 [etherscan]
 # API keys untuk verifikasi contract di Etherscan
-mainnet  = "${ETHERSCAN_API_KEY}"
-sepolia  = "${ETHERSCAN_API_KEY}"
+mainnet  = { key = "${ETHERSCAN_API_KEY}" }   # format wajib: tabel { key = ... }
+sepolia  = { key = "${ETHERSCAN_API_KEY}" }
 ```
 
 ---
@@ -227,7 +229,10 @@ forge inspect MyContract abi
 # Lihat ABI dari contract tertentu (JSON format)
 
 forge inspect MyContract bytecode
-# Lihat deployed bytecode
+# Lihat CREATION bytecode (kode deploy, termasuk constructor)
+
+forge inspect MyContract deployedBytecode
+# Lihat RUNTIME bytecode (kode yang tersimpan di chain)
 
 forge inspect MyContract storage-layout
 # Lihat storage layout (SANGAT BERGUNA untuk debugging storage bugs!)
@@ -329,9 +334,10 @@ forge inspect Counter abi
 ## Exercise C2: Project Setup
 
 ```bash
-# Buat project untuk Phase 6 learning:
+# Buat project untuk Phase 6 learning (di subfolder lab/ agar README materi aman):
 cd 06-foundry-tooling/
-forge init . --no-git
+forge init lab --no-git
+cd lab
 
 # Install OpenZeppelin:
 forge install OpenZeppelin/openzeppelin-contracts --no-git
@@ -475,7 +481,8 @@ assertFalse(condition);
 
 // APPROXIMATE EQUALITY (untuk floating point approximations)
 assertApproxEqAbs(a, b, delta);  // |a - b| <= delta
-assertApproxEqRel(a, b, percent); // |a - b| / b <= percent (dalam basis points)
+assertApproxEqRel(a, b, maxPercentDelta); // |a - b| / b <= maxPercentDelta, skala 1e18 = 100%
+                                          // contoh: 0.01e18 = 1%
 
 // ADDRESS CHECKS
 assertEq(addr1, addr2);
@@ -519,7 +526,8 @@ contract MyContract {
 // Di test:
 function test_ComplexCalc() public {
     // forge test -vv akan menampilkan semua console.log
-    uint256 result = contract.complexCalculation(42);
+    uint256 result = calc.complexCalculation(42);  // `calc` = instance MyContract
+                                                   // (`contract` adalah keyword — tidak bisa jadi nama variabel)
     assertEq(result, 184);
 }
 ```
@@ -817,7 +825,7 @@ function test_OnlyOwner() public {
 vm.deal(alice, 10 ether);
 assertEq(alice.balance, 10 ether);
 
-// vm.hoax(address, uint256) — Shortcut: deal + prank dalam satu call
+// hoax(address, uint256) — helper forge-std (bukan vm.*): deal + prank dalam satu call
 // Setara: vm.deal(alice, amount); vm.prank(alice);
 hoax(alice, 5 ether);
 payableContract.deposit{value: 1 ether}();
@@ -860,10 +868,12 @@ function test_CanWithdrawAfterTimelock() public {
 // Sangat berguna untuk setup test state tanpa memanggil banyak fungsi
 
 function test_DirectStorageManipulation() public {
-    // Misalnya: set balance alice langsung di storage slot 0
+    // Mapping `balanceOf` di MyToken (C3) berada di SLOT 5 — cek dengan:
+    //   forge inspect MyToken storage-layout
+    // (slot 0–4: name, symbol, decimals, totalSupply, owner)
     vm.store(
         address(token),
-        keccak256(abi.encode(alice, 0)),  // Slot mapping balances[alice]
+        keccak256(abi.encode(alice, uint256(5))),  // Slot balanceOf[alice]
         bytes32(uint256(1000 * 1e18))     // Set ke 1000 token
     );
     
@@ -876,7 +886,10 @@ console.logBytes32(rawValue);
 
 // Contoh: bypass access control untuk setup test
 // Daripada menjalankan chain panjang fungsi untuk setup state kompleks,
-// langsung manipulasi storage untuk test yang fokus pada logika spesifik
+// langsung manipulasi storage untuk test yang fokus pada logika spesifik.
+// 💡 Untuk balance ERC-20, lebih mudah & aman pakai helper forge-std:
+//    deal(address(token), alice, 1000e18);   // mencari slot secara otomatis
+// ⚠️ vm.store melewati semua invariant contract (misal totalSupply TIDAK ikut berubah).
 ```
 
 ---
@@ -1018,6 +1031,12 @@ contract TimeLock {
 - Event verification: emit `Locked` dan `Released` dengan benar
 - Balance verification: ETH benar-benar berpindah
 
+**✅ Selesai jika:**
+- [ ] `forge test --match-contract TimeLock` hijau dengan minimal 5 test sesuai daftar
+- [ ] Setiap revert diuji dengan selector **dan argumen** (`abi.encodeWithSelector(TimeLock.NotYet.selector, ...)`)
+- [ ] Ubah sementara `<` menjadi `<=` di `release()` → minimal satu test Anda menjadi merah
+
+
 ---
 
 ---
@@ -1064,8 +1083,8 @@ cast sig-event "Transfer(address,address,uint256)"
 
 # ===== ADDRESS UTILITIES =====
 
-cast checksum 0xabcdef1234567890abcdef1234567890abcdef12
-# → 0xAbcDEF1234567890AbcdeF1234567890AbcDEf12  (EIP-55 checksum)
+cast to-check-sum-address 0xabcdef1234567890abcdef1234567890abcdef12
+# → 0xabCDEF1234567890ABcDEF1234567890aBCDeF12  (EIP-55 checksum)
 
 cast address-zero
 # → 0x0000000000000000000000000000000000000000
@@ -1078,7 +1097,7 @@ cast address-zero
 ```bash
 # Butuh RPC URL — set di environment atau langsung di flag
 
-export RPC_URL="https://rpc.ankr.com/eth"
+export RPC_URL="https://ethereum-rpc.publicnode.com"
 
 # ===== BLOCK INFO =====
 
@@ -1111,7 +1130,8 @@ cast storage 0xContractAddress 0 --rpc-url $RPC_URL
 # Baca slot 0 dari storage contract
 
 cast storage 0xUSDC 2 --rpc-url $RPC_URL
-# Baca slot 2 dari USDC contract (totalSupply biasanya di slot ini)
+# Baca slot 2 dari USDC — apa isinya? (USDC adalah proxy; layout-nya tidak
+# sama dengan ERC-20 sederhana. Ini justru inti Soal 2 Q4 di bawah.)
 
 # ===== CALL CONTRACT FUNCTION =====
 
@@ -1214,7 +1234,7 @@ cast resolve-name "vitalik.eth" --rpc-url $RPC_URL
 Gunakan `cast` untuk menjawab pertanyaan berikut (gunakan Ethereum Mainnet via public RPC):
 
 ```bash
-RPC_URL="https://rpc.ankr.com/eth"
+RPC_URL="https://ethereum-rpc.publicnode.com"
 
 # Target: USDC Contract
 USDC="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
@@ -1236,6 +1256,12 @@ USDC="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 ```
 
 *Tulis perintah yang Anda gunakan dan hasilnya di Notes section.*
+
+**✅ Selesai jika:**
+- [ ] Setiap Q dijawab dengan perintah `cast` yang dipakai + output mentahnya
+- [ ] Q1 dikonversi memakai 6 decimals (cek: `cast from-wei` tidak tepat untuk USDC — mengapa?)
+- [ ] Q3 diverifikasi dua arah: hasil `cast 4byte` di-hash ulang dengan `cast sig` dan harus kembali ke selector yang sama
+
 
 ---
 
@@ -1270,13 +1296,20 @@ anvil
 # RPC URL:  http://127.0.0.1:8545
 
 # Dengan konfigurasi custom
+#   --block-time 12  → block setiap 12 detik (realistis seperti Ethereum)
+#   --accounts 20    → generate 20 akun
+#   --balance 100    → 100 ETH per akun
+#   --chain-id 1337  → chain ID custom
+#   --port 8546      → port custom
+#   --fork-url       → fork dari mainnet!
+# (⚠️ Di bash, komentar TIDAK boleh diletakkan setelah \ penyambung baris)
 anvil \
-    --block-time 12 \          # Block time 12 detik (realistic Ethereum)
-    --accounts 20 \            # Generate 20 accounts
-    --balance 100 \            # 100 ETH per account
-    --chain-id 1337 \          # Custom chain ID
-    --port 8546 \              # Custom port
-    --fork-url $MAINNET_RPC    # Fork dari mainnet!
+    --block-time 12 \
+    --accounts 20 \
+    --balance 100 \
+    --chain-id 1337 \
+    --port 8546 \
+    --fork-url $MAINNET_RPC
 
 # Fork mainnet di block tertentu (reproducible)
 anvil --fork-url $MAINNET_RPC --fork-block-number 18500000
@@ -1289,13 +1322,13 @@ anvil --state anvil-state.json
 
 ## Anvil vs Public Testnet
 
-| Aspek | Anvil (Local) | Sepolia/Goerli (Public Testnet) |
+| Aspek | Anvil (Local) | Sepolia (Public Testnet) |
 |---|---|---|
 | **Speed** | Instan (< 1 ms per block) | ~12 detik per block |
 | **Faucet** | Pre-funded 10,000 ETH otomatis | Butuh faucet (sering kosong/lambat) |
 | **Reset** | Kapan saja, gratis | Tidak bisa di-reset |
 | **Fork** | Bisa fork mainnet state | Tidak bisa fork mainnet |
-| **Cheatcodes** | Semua vm cheatcodes tersedia | Tidak ada cheatcodes |
+| **Manipulasi state** | RPC khusus `anvil_*` / `evm_*` (set balance, impersonate, mine, snapshot) — cheatcode `vm.*` hanya ada di `forge test`/`forge script` | Tidak bisa |
 | **Privacy** | Lokal (tidak ada orang lain yang lihat) | Semua orang bisa lihat |
 | **Use case** | Development & unit testing | Final integration testing sebelum mainnet |
 
@@ -1313,10 +1346,13 @@ export ALICE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2
 # (Ini adalah default private key anvil account 0 — JANGAN gunakan di mainnet!)
 
 # Deploy contract ke anvil
+# (Foundry 1.x: tanpa --broadcast, forge create hanya simulasi;
+#  --constructor-args diletakkan PALING AKHIR karena menerima banyak nilai)
 forge create src/MyToken.sol:MyToken \
-    --constructor-args "MyToken" "MTK" 1000000000000000000000000 \
     --rpc-url $ANVIL_RPC \
-    --private-key $ALICE_KEY
+    --private-key $ALICE_KEY \
+    --broadcast \
+    --constructor-args "MyToken" "MTK" 1000000000000000000000000
 
 # Interact dengan contract yang sudah deploy
 cast call 0xDeployedAddress "totalSupply()(uint256)" --rpc-url $ANVIL_RPC
@@ -1325,8 +1361,8 @@ cast call 0xDeployedAddress "totalSupply()(uint256)" --rpc-url $ANVIL_RPC
 cast rpc anvil_impersonateAccount 0xVitalikAddress --rpc-url $ANVIL_RPC
 cast rpc anvil_setBalance 0xAddress 100000000000000000000 --rpc-url $ANVIL_RPC  # Set balance 100 ETH
 cast rpc anvil_mine 10 --rpc-url $ANVIL_RPC  # Mine 10 blocks sekaligus
-cast rpc anvil_snapshot --rpc-url $ANVIL_RPC  # Snapshot state
-cast rpc anvil_revert --rpc-url $ANVIL_RPC    # Revert ke snapshot
+cast rpc evm_snapshot --rpc-url $ANVIL_RPC       # Snapshot state → mengembalikan id, misal "0x0"
+cast rpc evm_revert 0x0 --rpc-url $ANVIL_RPC     # Revert ke snapshot dengan id tersebut
 ```
 
 ---
@@ -1392,30 +1428,34 @@ forge script script/DeployMyToken.s.sol:DeployMyToken \
     --rpc-url $ANVIL_RPC
 
 # ===== DEPLOY KE ANVIL =====
+# --private-key: default private key anvil account #0 (publik — hanya untuk lokal!)
 forge script script/DeployMyToken.s.sol:DeployMyToken \
     --rpc-url http://localhost:8545 \
-    --private-key 0xac0974bec39... \  # Anvil default private key
+    --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
     --broadcast
 
 # ===== DEPLOY KE SEPOLIA TESTNET =====
 # Butuh SEPOLIA_RPC_URL dan PRIVATE_KEY di .env
+# --verify → verifikasi source code di Etherscan; -vvvv → output verbose
 source .env
 forge script script/DeployMyToken.s.sol:DeployMyToken \
     --rpc-url $SEPOLIA_RPC_URL \
     --private-key $PRIVATE_KEY \
     --broadcast \
-    --verify \                        # Verifikasi source code di Etherscan!
-    --etherscan-api-key $ETHERSCAN_KEY \
-    -vvvv                             # Verbose output
+    --verify \
+    --etherscan-api-key $ETHERSCAN_API_KEY \
+    -vvvv
 
 # ===== DEPLOY KE MAINNET (HATI-HATI!) =====
+# ⚠️ Untuk mainnet, jangan pakai --private-key mentah: gunakan hardware wallet
+#    (--ledger / --trezor) atau keystore terenkripsi (cast wallet import + --account).
+# (Flag --legacy hanya untuk chain yang belum mendukung EIP-1559 — bukan Ethereum mainnet.)
 forge script script/DeployMyToken.s.sol:DeployMyToken \
     --rpc-url $MAINNET_RPC_URL \
-    --private-key $PRIVATE_KEY \
+    --ledger \
     --broadcast \
     --verify \
-    --etherscan-api-key $ETHERSCAN_KEY \
-    --legacy \                        # Gunakan untuk network yang belum support EIP-1559
+    --etherscan-api-key $ETHERSCAN_API_KEY \
     -vvvv
 ```
 
@@ -1532,6 +1572,13 @@ Buat script deployment lengkap untuk `MyToken`:
 5. **Verify**: Cek di [sepolia.etherscan.io](https://sepolia.etherscan.io) bahwa contract terverifikasi.
 6. **Interact**: Gunakan `cast call` untuk verifikasi state contract di Sepolia.
 
+**✅ Selesai jika:**
+- [ ] Dry-run di anvil berhasil sebelum broadcast ke Sepolia
+- [ ] Contract terverifikasi (centang hijau) di Sepolia Etherscan — link disimpan di Notes
+- [ ] `cast call <token> "balanceOf(address)(uint256)" <address-anda>` = `1000e18`
+- [ ] `git status` tidak menampilkan `.env`
+
+
 ---
 
 ---
@@ -1544,9 +1591,10 @@ Setup workflow development yang profesional untuk semua phase berikutnya.
 ## Checklist Setup
 
 ```bash
-# 1. Init project
+# 1. Init project (lewati jika lab/ sudah dibuat di Exercise C2)
 cd 06-foundry-tooling/
-forge init . --no-git
+forge init lab --no-git
+cd lab
 
 # 2. Install dependencies
 forge install OpenZeppelin/openzeppelin-contracts --no-git
@@ -1574,7 +1622,7 @@ anvil = "http://localhost:8545"
 sepolia = "${SEPOLIA_RPC_URL}"
 
 [etherscan]
-sepolia = "${ETHERSCAN_API_KEY}"
+sepolia = { key = "${ETHERSCAN_API_KEY}" }
 EOF
 
 # 4. Buat .env template
@@ -1615,6 +1663,22 @@ Sebuah project Foundry yang berisi:
 4. Gas snapshot (`forge snapshot`)
 
 5. `README.md` update dengan instruksi cara run test
+
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Deliverable 1–2: `MyToken` + minimal 15 test |
+| 🟡 **Extended** — disarankan | Deliverable 3–4: deployment script + gas snapshot |
+| 🔴 **Stretch** — untuk portfolio | Deliverable 5 + fuzz test untuk `transfer` dan `transferFrom` |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] `forge test` hijau dengan ≥ 15 test, termasuk ≥ 3 test revert dan ≥ 2 test event
+- [ ] Mint oleh non-owner → revert dengan custom error (bukan string)
+- [ ] `forge script` berhasil dry-run di anvil
+- [ ] `.gas-snapshot` ada dan `forge snapshot --check` lulus
+
 
 ---
 
@@ -1685,6 +1749,22 @@ contract BrokenVault {
 3. **Fix** setiap bug dan jelaskan root cause-nya.
 4. **Tulis exploit PoC** (Proof of Concept) untuk bug paling kritis menggunakan Foundry.
 5. **Tulis laporan** singkat: Bug, Impact, Fix, Test.
+
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Tugas 1–2: test suite yang mengekspos minimal 3 bug |
+| 🟡 **Extended** — disarankan | Tugas 3–4: fix setiap bug + exploit PoC untuk bug paling kritis |
+| 🔴 **Stretch** — untuk portfolio | Tugas 5: laporan Bug/Impact/Fix/Test dengan format template audit Phase 8 C8 |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] Minimal 3 test **merah** terhadap `BrokenVault` asli, masing-masing untuk bug berbeda
+- [ ] Test yang sama **hijau** terhadap versi yang sudah Anda perbaiki
+- [ ] PoC membuktikan dana bisa diambil melebihi deposit (atau terkunci) pada versi asli
+- [ ] Setiap bug dijelaskan root cause-nya dalam 1–2 kalimat
+
 
 ---
 

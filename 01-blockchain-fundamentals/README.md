@@ -2,7 +2,7 @@
 
 > **Level**: 1 — Beginner Conceptual Mastery
 > **Phase**: 1 of 13
-> **Estimated Time**: 5–7 hari (belajar sambil bekerja)
+> **Estimated Time**: 🚀 Intensif 5–7 hari kerja (Core + Extended, ~6 jam/hari) · 🐢 Paruh waktu 2–3 minggu (Core, ~10 jam/minggu)
 
 ---
 
@@ -31,10 +31,10 @@ Setelah menyelesaikan fase ini, Anda akan mampu:
 
 | # | Konsep | Status |
 |:---:|---|:---:|
-| **C1** | [Web2 vs Web3: The Architecture Paradigm Shift](#c1-web2-vs-web3-the-architecture-paradigm-shift) | ⬜ |
+| **C1** | [Web2 vs Web3: The Architecture Paradigm Shift](#c1-web2-vs-web3--the-architecture-paradigm-shift) | ⬜ |
 | **C2** | [Distributed Ledger & P2P Network](#c2-distributed-ledger--p2p-network) | ⬜ |
 | **C3** | [Anatomy of a Blockchain Transaction](#c3-anatomy-of-a-blockchain-transaction) | ⬜ |
-| **C4** | [Transaction Lifecycle: From Wallet to Finality](#c4-transaction-lifecycle-from-wallet-to-finality) | ⬜ |
+| **C4** | [Transaction Lifecycle: From Wallet to Finality](#c4-transaction-lifecycle--from-wallet-to-finality) | ⬜ |
 | **C5** | [Consensus, Finality & Blockchain Trilemma](#c5-consensus-finality--blockchain-trilemma) | ⬜ |
 
 ---
@@ -102,7 +102,7 @@ Bayangkan tiga skenario berbeda untuk fitur yang sama: **"Transfer Saldo dari Al
 │    nonce:    42,                                    │
 │    gasLimit: 65000,                                 │
 │    maxFee:   20 gwei,                               │
-│    v: 27, r: "0xabc...", s: "0xdef..."              │
+│    yParity: 0, r: "0xabc...", s: "0xdef..."         │
 │  }                                                  │
 └──────────────────────┬──────────────────────────────┘
                        │ 3. Broadcast ke RPC Node
@@ -218,7 +218,7 @@ Di Web3:
 - Tidak ada "pusat" yang bisa mengganti atau me-reset Private Key karena tidak ada yang menyimpannya selain user sendiri
 
 Jika Private Key hilang:
-- Tidak ada cara matematis yang diketahui untuk menebak Private Key dari Address (pre-image resistance of elliptic curve)
+- Tidak ada cara yang diketahui untuk menghitung Private Key dari Address: address adalah hash satu arah dari Public Key, dan Public Key → Private Key terlindungi oleh *Elliptic Curve Discrete Logarithm Problem* (Phase 3)
 - **Dana di alamat tersebut hilang selamanya**
 - Inilah kenapa seed phrase (12-24 kata) sangat sakral di Web3 — itu adalah satu-satunya "backup" Private Key
 
@@ -349,9 +349,9 @@ MEMPOOL (setiap full node punya copy-nya sendiri)
 │ ... (bisa ribuan transaksi di saat sibuk)              │
 └────────────────────────────────────────────────────────┘
          ▲                              │
-         │ Broadcast masuk             │ Validator ambil yang gasPrice tertinggi
+         │ Broadcast masuk             │ Builder/validator pilih yang priority fee tertinggi
          │                             ▼
-     User Wallet                   New Block (1-12 tx)
+     User Wallet                   New Block (ratusan tx)
 ```
 
 **Key Insight**: Karena mempool bersifat publik, **siapapun bisa melihat transaksi yang belum dieksekusi**. Ini adalah sumber dari serangan **MEV (Maximal Extractable Value)** dan **Front-running** — topik yang sangat penting di security.
@@ -371,7 +371,8 @@ BLOCK #21,500,000
 │                             semua tx di blok ini)        │
 │   transactionsRoot: 0x4b2... (merkle root semua tx)      │
 │   timestamp:     1735000012                              │
-│   gasLimit:      30,000,000                              │
+│   gasLimit:      36,000,000+ (dinaikkan bertahap; cek    │
+│                  nilai terkini di Etherscan)             │
 │   gasUsed:       18,432,000                              │
 │   proposer:      0xValidator...                          │
 ├───────────────────────────────────────────────────────────┤
@@ -471,19 +472,19 @@ Di Web3, "transaksi" adalah sebuah pesan kriptografis:
   "maxFeePerGas":         "20000000000",
   "maxPriorityFeePerGas": "1500000000",
   "gasLimit":             "65000",
-  "v":                    27,
+  "yParity":              0,
   "r":                    "0xabc123...",
   "s":                    "0xdef456..."
 }
 ```
-Validitas ditentukan secara matematis dari signature `(v, r, s)` — bukan oleh server.
+Validitas ditentukan secara matematis dari signature `(yParity/v, r, s)` — bukan oleh server. (Transaksi EIP-1559 / tipe-2 memakai `yParity` bernilai 0 atau 1; transaksi *legacy* memakai `v` = 27/28 atau `chainId × 2 + 35/36` per EIP-155.)
 
 ---
 
 ## Setiap Field, Explained
 
 ### `from` (Address — 20 bytes)
-Alamat Ethereum pengirim. Ini **tidak perlu ditulis manual** di transaksi modern — melainkan di-*recover* secara matematis dari signature `(v, r, s)` dan hash transaksi. Ini adalah bukti bahwa hanya pemilik Private Key yang bisa menghasilkan signature tersebut.
+Alamat Ethereum pengirim. Field ini **tidak pernah ikut ditandatangani/dikirim** di dalam transaksi — node selalu me-*recover*-nya secara matematis dari signature `(v, r, s)` dan hash transaksi. Ini adalah bukti bahwa hanya pemilik Private Key yang bisa menghasilkan signature tersebut.
 
 ```
 Private Key → Sign(hash(tx)) → (v, r, s)
@@ -606,7 +607,7 @@ require(balance[signer] >= value + gasLimit * maxFeePerGas) → cukup saldo
 Buka Etherscan ([etherscan.io](https://etherscan.io)) dan cari transaksi hash ini:
 `0x5c504ed432cb51138bcf09aa5e8a410dd4a1e204ef84bfed1be16dfba1b22060`
 
-*(Ini adalah transaksi DAO hack, 2016 — salah satu momen paling bersejarah di Ethereum)*
+*(Ini adalah **transaksi pertama** di mainnet Ethereum — block 46147, Agustus 2015. Transaksi sederhana, tetapi bersejarah.)*
 
 **Pertanyaan**:
 - a) Apa isi field `from`, `to`, `value`, dan `input` (calldata)?
@@ -615,6 +616,11 @@ Buka Etherscan ([etherscan.io](https://etherscan.io)) dan cari transaksi hash in
 - d) Berapa ETH yang dipindahkan?
 
 *Tulis temuan Anda di bagian Notes README ini.*
+
+**✅ Selesai jika:**
+- [ ] Jawaban a–d tertulis di Notes, masing-masing dengan nilai mentah dari Etherscan
+- [ ] Cek silang: transfer ETH murni (input `0x`) **selalu** memakai tepat 21.000 gas — jika jawaban (b) Anda berbeda, periksa ulang
+
 
 ---
 
@@ -688,7 +694,7 @@ STEP 4: MEMPOOL (Global Waiting Room)
 │
 │  Kasus-kasus:
 │  ┌─ Normal    → Included dalam 1-3 blocks (~12-36 detik)
-│  ├─ Murah     → Stuck berjam-jam atau berhari-hari jika baseFee turun
+│  ├─ Murah     → Stuck berjam-jam/berhari-hari SAMPAI baseFee turun
 │  └─ Sangat    → Transaksi di-drop dari mempool setelah beberapa hari
 │     Murah       jika tidak pernah diinclude
 │
@@ -696,8 +702,10 @@ STEP 4: MEMPOOL (Global Waiting Room)
 STEP 5: INCLUSION (Validator picks the transaction)
 │
 │  Setiap ~12 detik, validator yang bertugas (block proposer):
-│  1. Ambil transaksi dari mempool (prioritas: highest gas fee)
+│  1. Ambil transaksi dari mempool (prioritas: priority fee tertinggi)
 │  2. Sort transaksi dalam blok (untuk MEV optimization)
+│  ℹ️ Saat ini mayoritas block disusun oleh *builder* khusus via
+│     MEV-Boost; proposer hanya memilih block bernilai tertinggi (Phase 13)
 │  3. Eksekusi transaksi satu per satu di EVM lokal mereka
 │  4. Hitung state root baru
 │  5. Bentuk block header dan body
@@ -759,11 +767,11 @@ Setiap opcode EVM punya "harga gas":
   ADD        = 3 gas
   MSTORE     = 3 gas  
   SLOAD      = 2100 gas  (baca dari storage — mahal!)
-  SSTORE     = 20000 gas (tulis ke storage — sangat mahal!)
+  SSTORE     = 20000 gas (tulis ke slot kosong — sangat mahal! detail lengkap di Phase 2)
   CALL       = 2600 gas
   CREATE     = 32000 gas
 
-Total biaya transaksi = Σ(semua opcode yang dijalankan) × gasPrice (dalam wei)
+Total biaya transaksi = (21.000 intrinsik + biaya calldata + Σ opcode yang dijalankan) × effectiveGasPrice
 ```
 
 **Kenapa mahal di Layer 1?** Karena setiap SSTORE dan SLOAD berarti membaca/menulis ke state database yang disimpan oleh ribuan node di seluruh dunia secara sinkron. Bandingkan dengan `SELECT` di PostgreSQL yang hanya menyentuh satu server.
@@ -783,9 +791,9 @@ User Anda mengirim transaksi dengan gas fee 10 gwei, tapi network sedang sangat 
 <details>
 <summary>💡 Pembahasan</summary>
 
-**a)** Karena `maxFeePerGas` (10 gwei) lebih rendah dari `baseFee` (50 gwei). Per protocol EIP-1559, validator **wajib** membakar `baseFee` dari setiap transaksi. Jika maxFeePerGas < baseFee, validator tidak akan pernah mengambil transaksi ini karena mereka akan "rugi". Transaksi stuck sampai baseFee turun di bawah 10 gwei, atau user me-replace transaksi tersebut.
+**a)** Karena `maxFeePerGas` (10 gwei) lebih rendah dari `baseFee` (50 gwei). Per aturan protokol EIP-1559, transaksi dengan `maxFeePerGas < baseFee` **tidak valid untuk dimasukkan ke block** — bukan sekadar "tidak menguntungkan", melainkan block yang memuatnya akan ditolak jaringan. Transaksi menunggu di mempool sampai baseFee turun di bawah 10 gwei, atau user me-replace-nya. Selama menunggu, **tidak ada ETH yang terpakai**.
 
-**b)** User harus mengirim transaksi baru dengan nonce yang SAMA (nonce transaksi yang stuck) dengan `maxFeePerGas` yang lebih tinggi dari baseFee saat ini. Karena nonce sama, transaksi baru ini akan "replace" transaksi lama di mempool node. Validator akan mengambil yang gas fee-nya lebih tinggi.
+**b)** User harus mengirim transaksi baru dengan nonce yang SAMA (nonce transaksi yang stuck) dengan `maxFeePerGas` yang lebih tinggi dari baseFee saat ini. Karena nonce sama, transaksi baru ini akan "replace" transaksi lama di mempool node — dengan syarat **`maxFeePerGas` dan `maxPriorityFeePerGas` masing-masing naik minimal ~10%** (aturan replacement di Geth; jika kurang, node menolaknya sebagai *replacement transaction underpriced*).
 
 **c)** "Cancel" di MetaMask sebenarnya mengirimkan transaksi baru dengan:
 - Nonce yang SAMA dengan transaksi yang mau di-cancel
@@ -819,7 +827,7 @@ Ini adalah pertanyaan trade-off antara **user experience** (makin cepat makin ba
 - **0.01 - 1 ETH**: 6-12 confirmations (~72-144 detik). Balance yang wajar.
 - **> 1 ETH**: 32-64 confirmations, atau tunggu hingga block mencapai status "Finalized" (~12-15 menit via Ethereum PoS checkpointing). Nilai tinggi membenarkan penundaan tambahan. Sama seperti mengapa toko emas tidak langsung melepas barang sebelum dana benar-benar clear.
 
-Dalam produk nyata, sebagian besar exchange terpusat menunggu **35+ confirmations** untuk deposit ETH dengan nilai signifikan.
+Dalam produk nyata, banyak exchange terpusat menunggu block mencapai **finalized** (atau jumlah konfirmasi setara ~2 epoch) sebelum mengkreditkan deposit ETH.
 
 </details>
 
@@ -854,14 +862,16 @@ semua block setelahnya PLUS menjadi lebih cepat dari seluruh jaringan.
 
 ```text
 Untuk menjadi validator:
-  - Stake (kunci) 32 ETH sebagai jaminan (collateral)
+  - Stake (kunci) minimal 32 ETH sebagai jaminan (collateral)
+    (sejak Pectra/EIP-7251, satu validator bisa memiliki effective balance hingga 2.048 ETH)
 
 Untuk mengusulkan / menyetujui block:
   - Dipilih secara pseudo-random, proporsional terhadap ETH yang di-stake
   - Tanda tangan digital digunakan sebagai "vote"
 
 Jika validator berlaku jahat (misal: vote untuk dua block yang berkonflik):
-  - SLASHING: sebagian atau seluruh 32 ETH mereka di-burn sebagai hukuman
+  - SLASHING: sebagian stake di-burn & validator dikeluarkan; penalti membesar
+    (hingga seluruh stake) jika banyak validator di-slash dalam periode yang sama
   - Ini menciptakan cryptoeconomic security: biaya menyerang jaringan 
     harus lebih besar dari keuntungan yang bisa didapat
 ```
@@ -880,14 +890,15 @@ Setiap epoch, validator vote untuk "checkpoint" block.
 Jika >66.7% dari total staked ETH memvote untuk checkpoint yang sama,
 block tersebut dianggap "Justified".
 
-Dua consecutive justified checkpoints → block antara mereka menjadi "Finalized".
+Jika checkpoint berikutnya (epoch tepat setelahnya) juga Justified, checkpoint sebelumnya
+— beserta semua block sebelumnya — menjadi "Finalized".
 
 Timeline: ~2 epochs = ~12-15 menit untuk finality
 ```
 
 Setelah block Finalized:
-- Untuk me-revert block ini, attacker harus mengontrol >33% dari seluruh staked ETH (~400.000 ETH = miliaran dolar pada harga saat ini)
-- DAN mereka akan di-slash (kehilangan seluruh stake mereka)
+- Untuk me-revert block ini, harus ada konflik finalisasi yang membutuhkan **>1/3 dari seluruh staked ETH** ikut melanggar aturan — dengan ~34 juta ETH ter-stake, itu **>11 juta ETH** (puluhan miliar dolar)
+- DAN validator yang melanggar akan di-slash; karena *correlation penalty*, pelanggaran massal seperti ini menghanguskan **sebagian besar hingga seluruh** stake mereka
 - Biaya serangan: jauh lebih besar dari keuntungan yang mungkin didapat
 
 ---
@@ -908,9 +919,9 @@ Vitalik Buterin (pendiri Ethereum) merumuskan bahwa sangat sulit untuk memiliki 
 |---|:---:|:---:|:---:|
 | **Bitcoin** | ✅ Tinggi | ✅ Tinggi | ❌ ~7 TPS |
 | **Ethereum L1** | ✅ Tinggi | ✅ Tinggi | ❌ ~15 TPS |
-| **Solana** | ⚠️ Sedang | ⚠️ Sedang | ✅ ~65,000 TPS |
+| **Solana** | ⚠️ Sedang | ⚠️ Sedang | ✅ ~65,000 TPS (teoretis; aktual ribuan) |
 | **Private Blockchain** | ❌ Rendah | ⚠️ Sedang | ✅ Tinggi |
-| **Ethereum L2 (Optimism/Base)** | ✅ Tinggi | ✅ Tinggi | ✅ ~2,000+ TPS |
+| **Ethereum L2 (Optimism/Base)** | ⚠️ Sedang (sequencer masih terpusat) | ✅ Mewarisi L1 (tergantung *stage*, Phase 12) | ✅ Ribuan TPS |
 
 **Kenapa ini penting untuk developer?**
 - Ini menjelaskan kenapa transaksi di Ethereum L1 mahal dan lambat.
@@ -943,7 +954,7 @@ Anda ditugaskan untuk memilih blockchain platform untuk tiga klien berbeda:
 
 **Klien C (High-Value NFT Protocol)**:
 - **Rekomendasi**: Ethereum Mainnet (L1)
-- **Alasan**: NFT bernilai ratusan ETH memerlukan jaminan keamanan tertinggi dan decentralization terkuat yang ada. Kolektor kaya rela membayar gas fee L1 yang mahal ($20-$100) untuk transaksi yang melibatkan aset senilai jutaan rupiah. Kepercayaan adalah fitur utama, bukan kecepatan atau biaya.
+- **Alasan**: NFT bernilai ratusan ETH memerlukan jaminan keamanan tertinggi dan decentralization terkuat yang ada. Kolektor kaya rela membayar gas fee L1 yang mahal ($20-$100) untuk transaksi yang melibatkan aset senilai miliaran rupiah. Kepercayaan adalah fitur utama, bukan kecepatan atau biaya.
 
 </details>
 
@@ -968,7 +979,7 @@ Buat sebuah script Node.js yang memvisualisasikan perjalanan sebuah transaksi be
 
 ## Constraints
 - Gunakan hanya Node.js native `fetch` (built-in Node.js v18+) — tanpa library eksternal.
-- Gunakan public RPC endpoint gratis: `https://rpc.ankr.com/eth_sepolia` atau `https://ethereum-sepolia-rpc.publicnode.com`
+- Gunakan public RPC endpoint gratis tanpa API key: `https://ethereum-sepolia-rpc.publicnode.com` (alternatif: daftar endpoint di [chainlist.org](https://chainlist.org/chain/11155111)). Banyak provider (misal Ankr) kini mewajibkan API key.
 - Output harus human-readable, bukan raw JSON dump.
 
 ## Hints (Buka satu per satu jika stuck!)
@@ -979,7 +990,7 @@ Buat sebuah script Node.js yang memvisualisasikan perjalanan sebuah transaksi be
 RPC Ethereum menggunakan JSON-RPC 2.0 over HTTP POST:
 
 ```javascript
-const response = await fetch("https://rpc.ankr.com/eth_sepolia", {
+const response = await fetch("https://ethereum-sepolia-rpc.publicnode.com", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -1012,7 +1023,8 @@ eth_blockNumber()
 // Konversi hex wei ke ETH
 const weiHex = "0x16345785d8a0000";
 const wei = BigInt(weiHex);
-const eth = Number(wei) / 1e18;
+// ⚠️ Jangan Number(wei) / 1e18 — Number hanya presisi ~15 digit, nilai wei besar akan terpotong.
+const eth = `${wei / 10n ** 18n}.${(wei % 10n ** 18n).toString().padStart(18, "0")}`;
 ```
 
 </details>
@@ -1041,6 +1053,22 @@ if (tx.to !== null && tx.input !== "0x") {
 
 </details>
 
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Requirements 1–3 untuk transaksi **transfer ETH** dan **contract interaction** |
+| 🟡 **Extended** — disarankan | Estimasi USD, jumlah konfirmasi yang ter-update, deteksi contract deployment |
+| 🔴 **Stretch** — untuk portfolio | Mode `--watch` yang mem-polling tx pending sampai final; decode function selector via 4byte |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] Diberi hash transfer ETH dan hash contract interaction, script menampilkan **jenis** yang benar untuk keduanya
+- [ ] Status, block number, dan biaya gas (ETH) **sama persis** dengan yang ditampilkan Etherscan untuk hash yang sama
+- [ ] Tanpa library eksternal; nilai wei diolah dengan `BigInt` (tidak ada `Number(wei)` untuk nilai besar)
+- [ ] Hash yang tidak ada / salah format menghasilkan pesan error yang jelas, bukan stack trace
+
+
 ---
 
 # 🏆 Challenge: "Stuck Transaction" Simulator
@@ -1061,11 +1089,27 @@ Buat sebuah JavaScript/TypeScript script yang mensimulasikan **keputusan strateg
 ## Challenge Bonus
 Tambahkan estimasi biaya dalam USD (hardcode 1 ETH = $3,500 atau fetch dari CoinGecko public API).
 
+### 🎚️ Tingkat
+
+| Tingkat | Cakupan |
+|---|---|
+| 🟢 **Core** — wajib sebelum lanjut fase | Requirement 1–2: tiga opsi gas dari data `eth_feeHistory` / block terakhir |
+| 🟡 **Extended** — disarankan | Requirement 3: kalkulasi *speed up* (replacement transaction) |
+| 🔴 **Stretch** — untuk portfolio | Estimasi USD + bandingkan prediksi Anda dengan block-block berikutnya (backtest sederhana) |
+
+### ✅ Kriteria Lulus (Core)
+
+- [ ] Ketiga opsi selalu terurut `slow ≤ standard ≤ fast` dan `maxFeePerGas ≥ baseFee + priorityFee`
+- [ ] Angka Anda berada dalam rentang yang sama dengan gas tracker Etherscan pada saat yang sama (screenshot di Notes)
+- [ ] Speed-up menaikkan **`maxFeePerGas` dan `maxPriorityFeePerGas`** masing-masing minimal 10% dari tx asli
+- [ ] Penjelasan 3–5 kalimat di Notes: mengapa *base fee* tidak bisa Anda tawar, tetapi *priority fee* bisa
+
+
 ---
 
 ## 📁 GitHub Task
 
-Setelah menyelesaikan minimal Exercise 1, 2, dan Mini Project, commit ke repository:
+Setelah menyelesaikan Soal 1–9 dan Mini Project (minimal Core), commit ke repository:
 
 ```bash
 # Simpan script exercise dan mini project
@@ -1092,7 +1136,7 @@ git commit -m "feat: add transaction flow tracer script (Phase 1 mini project)"
 6. Setelah "The Merge", apa yang menjadi penjamin keamanan Ethereum menggantikan komputasi (hash power) pada PoW?
 7. Dalam konteks Blockchain Trilemma, kenapa Layer 2 dianggap sebagai "solusi" yang elegan?
 8. Apa yang dimaksud dengan "Finalized" di Ethereum PoS, dan berapa lama untuk mencapainya?
-9. Jelaskan kenapa mengirim transaksi dengan gas fee terlalu rendah saat network congested TETAP membuang ETH Anda meskipun transaksi tidak berhasil.
+9. Bandingkan dua kasus: (a) transaksi dengan `maxFeePerGas` terlalu rendah saat network congested, dan (b) transaksi dengan `gasLimit` terlalu rendah. Mana yang membuang ETH Anda walaupun transaksinya gagal, dan mengapa yang lain tidak?
 10. Seorang backend developer Web2 terbiasa menangani error dengan "retry logic" otomatis. Mengapa pendekatan yang sama di Web3 (retry transaksi yang gagal secara otomatis) sangat berbahaya?
 
 ---
@@ -1104,8 +1148,7 @@ git commit -m "feat: add transaction flow tracer script (Phase 1 mini project)"
 - [ ] **C3**: Anatomy of a Transaction — *Every field explained*
 - [ ] **C4**: Transaction Lifecycle — *Wallet to finality*
 - [ ] **C5**: Consensus, Finality & Trilemma — *How 10,000 nodes agree*
-- [ ] **Exercise 1**: Etherscan Investigation
-- [ ] **Exercise 2**: Nonce & Transaction Scenarios
+- [ ] **Exercise**: Soal 1–9
 - [ ] **Mini Project**: Transaction Flow Tracer (Node.js)
 - [ ] **Challenge**: Gas Price Strategy Simulator
 - [ ] **Knowledge Check**: 10 Questions
