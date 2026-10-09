@@ -1,28 +1,40 @@
 name: CI
 
 # Menjaga repo pembelajaran tetap sehat:
-# - kode referensi Phase 5 selalu bisa di-build & lulus test
-# - jawaban di solutions/ tetap konsisten dengan contract
+# - kode Phase 5 selalu bisa di-build, berformat rapi, dan lulus test terhadap referensi
 # - link antar-materi (anchor & file) tidak rusak
+# - (mingguan) tautan eksternal masih hidup
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 3 * * 1" # Senin 03:00 UTC — cek tautan eksternal
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   phase5-foundry:
     name: Phase 5 — build & test
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: 05-smart-contract-development
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: foundry-rs/foundry-toolchain@v1
+      - uses: foundry-rs/foundry-toolchain@908c540300062bd5a7e473851cdb4282204cee09 # v1
+        with:
+          version: v1.7.1 # versi yang dipakai untuk memverifikasi materi
 
-      - name: Install dependencies
-        run: forge install foundry-rs/forge-std --no-git
+      - name: Install dependencies (versi di-pin)
+        run: forge install foundry-rs/forge-std@v1.17.0 --no-git
+
+      - name: Format check
+        run: forge fmt --check src test script solutions
 
       - name: Build starter (src/ harus selalu bisa di-compile)
         run: forge build --sizes
@@ -45,9 +57,20 @@ jobs:
 
   markdown-links:
     name: Materi — cek link internal
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Check anchors & relative links
         run: python3 -I .github/scripts/check_links.py
+
+  external-links:
+    name: Materi — cek tautan eksternal (mingguan)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check external URLs
+        run: python3 -I .github/scripts/check_external_links.py

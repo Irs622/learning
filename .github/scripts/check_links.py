@@ -43,7 +43,7 @@ def check(path: str) -> list[str]:
 
 
 def main() -> int:
-    files = sorted(glob.glob("README.md") + glob.glob("*/README.md") + glob.glob("*/*/README.md"))
+    files = sorted(glob.glob("*.md") + glob.glob("*/README.md") + glob.glob("*/*/README.md"))
     failed = False
     for f in files:
         for err in check(f):
